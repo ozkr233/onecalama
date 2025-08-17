@@ -28,7 +28,7 @@ export const anunciosMockData: AnuncioMunicipal[] = [
       {
         id: 1,
         anuncio: 1,
-        imagen: 'https://via.placeholder.com/400x250/3498db/ffffff?text=Mantención+de+Redes',
+        imagen: 'agua-corte', // Referencia al sistema de mapeo
         fecha: '2025-07-01T14:30:00Z',
         extension: 'jpg'
       }
@@ -60,7 +60,7 @@ export const anunciosMockData: AnuncioMunicipal[] = [
       {
         id: 2,
         anuncio: 2,
-        imagen: 'https://via.placeholder.com/400x250/27ae60/ffffff?text=Vacunación+Masiva',
+        imagen: 'vacunacion', // Referencia al sistema de mapeo
         fecha: '2025-06-30T10:15:00Z',
         extension: 'jpg'
       }
@@ -92,7 +92,7 @@ export const anunciosMockData: AnuncioMunicipal[] = [
       {
         id: 3,
         anuncio: 3,
-        imagen: 'https://via.placeholder.com/400x250/f39c12/ffffff?text=Construcción+Ciclovía',
+        imagen: 'obras-viales', // Referencia al sistema de mapeo
         fecha: '2025-06-29T16:45:00Z',
         extension: 'jpg'
       }
@@ -147,7 +147,7 @@ export const anunciosMockData: AnuncioMunicipal[] = [
       {
         id: 4,
         anuncio: 5,
-        imagen: 'https://via.placeholder.com/400x250/2ecc71/ffffff?text=Fumigación+Sanitaria',
+        imagen: 'fumigacion', // Referencia al sistema de mapeo
         fecha: '2025-06-27T13:45:00Z',
         extension: 'jpg'
       }
@@ -202,7 +202,7 @@ export const anunciosMockData: AnuncioMunicipal[] = [
       {
         id: 5,
         anuncio: 7,
-        imagen: 'https://via.placeholder.com/400x250/9b59b6/ffffff?text=Feria+Costumbrista',
+        imagen: 'cultura-eventos', // Referencia al sistema de mapeo
         fecha: '2025-06-25T15:20:00Z',
         extension: 'jpg'
       }
@@ -257,7 +257,7 @@ export const anunciosMockData: AnuncioMunicipal[] = [
       {
         id: 6,
         anuncio: 9,
-        imagen: 'https://via.placeholder.com/400x250/34495e/ffffff?text=Esterilización+Canina',
+        imagen: 'bienestar-animal', // Referencia al sistema de mapeo
         fecha: '2025-06-23T08:45:00Z',
         extension: 'jpg'
       }

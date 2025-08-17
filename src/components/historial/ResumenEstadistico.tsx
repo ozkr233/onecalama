@@ -11,7 +11,7 @@ interface ResumenEstadisticoProps {
 export const ResumenEstadistico: React.FC<ResumenEstadisticoProps> = ({ estadisticas }) => {
 
   // Calcular denuncias no resueltas
-  const noResueltas = estadisticas.totalDenuncias - estadisticas.resueltas;
+  const noResueltas = estadisticas.totalDenuncias - estadisticas.resueltas - estadisticas.pendientes;
 
   // Calcular porcentaje de resolución
   const porcentajeResolucion = estadisticas.totalDenuncias > 0
@@ -24,7 +24,7 @@ export const ResumenEstadistico: React.FC<ResumenEstadisticoProps> = ({ estadist
         {/* Header */}
         <XStack alignItems="center" gap="$2">
           <Ionicons name="stats-chart" size={20} color="#E67E22" />
-          <H4 color="$textPrimary">Resumen de mis denuncias</H4>
+          <H4 color="$textPrimary">📊 Resumen de mis denuncias</H4>
         </XStack>
 
         {/* Grid de estadísticas principales */}
@@ -77,16 +77,16 @@ export const ResumenEstadistico: React.FC<ResumenEstadisticoProps> = ({ estadist
           </Card>
 
           {/* No resueltas */}
-          <Card flex={1} bg="$red2" p="$3" br="$3" borderWidth={1} borderColor="$red6">
+          <Card flex={1} bg="$gray4" p="$3" br="$3" borderWidth={1} borderColor="$gray7">
             <YStack alignItems="center" gap="$2">
               <XStack alignItems="center" gap="$2">
-                <Ionicons name="alert-circle" size={24} color="#EF4444" />
-                <Text fontSize="$6" fontWeight="bold" color="#EF4444">
+                <Ionicons name="help-circle" size={24} color="#6B7280" />
+                <Text fontSize="$6" fontWeight="bold" color="#6B7280">
                   {noResueltas}
                 </Text>
               </XStack>
-              <Text fontSize="$3" color="#DC2626" fontWeight="600" textAlign="center">
-                Sin resolver
+              <Text fontSize="$3" color="#4B5563" fontWeight="600" textAlign="center">
+                No resuelto
               </Text>
             </YStack>
           </Card>

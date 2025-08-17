@@ -27,6 +27,7 @@ export default function DenunciasScreen() {
     departamento: '',
     direccion: '',
     ubicacion: undefined,
+    evidencias: [] // Inicializar con un array vacío
   });
 
   const [loading, setLoading] = useState(false);
@@ -140,6 +141,7 @@ export default function DenunciasScreen() {
                 departamento: '',
                 direccion: '',
                 ubicacion: undefined,
+                evidencias: [] 
               });
             }
           }

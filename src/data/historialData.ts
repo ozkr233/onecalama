@@ -1,29 +1,6 @@
-// src/data/historialData.ts - ACTUALIZADO CON ESTADÍSTICAS COMPLETAS
+// src/data/historialData.ts - CREADO DESDE CERO
 
 import { HistorialDenuncia, EstadisticasHistorial, Evidencia } from '../types/historial';
-
-// Estadísticas realistas basadas en las denuncias mock
-export const estadisticasPlaceholder: EstadisticasHistorial = {
-  totalDenuncias: 4,
-  resueltas: 3, // Denuncias con estado 'resuelto'
-  pendientes: 0, // Denuncias con estado 'pendiente'
-  enProceso: 1, // Denuncias con estado 'en_proceso'
-  rechazadas: 0,
-  cerradas: 0,
-  tiempoPromedioRespuesta: 2.8, // Promedio realista en días
-  satisfaccionPromedio: 4.7, // Promedio de las satisfacciones
-  porcentajeResolucion: 75, // 3 de 4 resueltas = 75%
-  denunciasPorCategoria: {
-    'Alumbrado Público': 1,
-    'Infraestructura Vial': 1,
-    'Ruidos Molestos': 1,
-    'Recolección de Basura': 1
-  },
-  denunciasPorMes: {
-    'diciembre 2024': 4
-  },
-  tendencia: 'mejorando'
-};
 
 // Mock de evidencias para respuestas municipales
 const evidenciasMockRespuestas: Evidencia[] = [
@@ -89,7 +66,7 @@ const evidenciasMockRespuestas: Evidencia[] = [
   }
 ];
 
-// Datos mock actualizados con evidencias en respuestas
+// Datos mock de denuncias
 export const denunciasPlaceholder: HistorialDenuncia[] = [
   {
     id: '1',
@@ -128,7 +105,7 @@ export const denunciasPlaceholder: HistorialDenuncia[] = [
         fechaRespuesta: '2024-12-09T08:15:00Z',
         autorRespuesta: 'María González',
         cargoAutor: 'Coordinadora de Alumbrado Público',
-        evidencias: [], // Sin evidencias en primera respuesta
+        evidencias: [],
         esRespuestaOficial: true,
         leida: true,
         departamento: 'Departamento de Obras Públicas'
@@ -272,11 +249,10 @@ export const denunciasPlaceholder: HistorialDenuncia[] = [
     titulo: 'Acumulación de basura en plaza pública',
     descripcion: 'Se observa acumulación excesiva de basura en Plaza San Martín que no ha sido recolectada en varios días.',
     categoria: 'Recolección de Basura',
-    estado: 'resuelto',
+    estado: 'rechazado',
     prioridad: 'media',
     fechaCreacion: '2024-12-15T09:20:00Z',
-    fechaActualizacion: '2024-12-16T14:00:00Z',
-    fechaResolucion: '2024-12-16T14:00:00Z',
+    fechaActualizacion: '2024-12-15T09:20:00Z',
     ubicacion: {
       direccion: 'Plaza San Martín, Calama',
       coordenadas: {
@@ -296,33 +272,90 @@ export const denunciasPlaceholder: HistorialDenuncia[] = [
         descripcion: 'Acumulación de basura en Plaza San Martín'
       }
     ],
-    respuestas: [
-      {
-        id: 'resp6',
-        contenido: 'Se ha completado la limpieza de Plaza San Martín. Nuestro equipo realizó la recolección de todos los residuos acumulados y aplicó desinfección del área. Adjuntamos video del procedimiento realizado para su conocimiento.',
-        fechaRespuesta: '2024-12-16T14:00:00Z',
-        autorRespuesta: 'Patricia Rojas',
-        cargoAutor: 'Supervisora de Aseo y Ornato',
-        evidencias: [
-          evidenciasMockRespuestas[4] // Video del procedimiento
-        ],
-        esRespuestaOficial: true,
-        leida: true,
-        departamento: 'Departamento de Medio Ambiente'
-      }
-    ],
-    tiempoRespuesta: 1.2,
-    satisfaccionCiudadano: 4,
+    respuestas: [], // Sin respuestas
     departamentoAsignado: 'Departamento de Medio Ambiente',
-    funcionarioAsignado: 'Patricia Rojas',
     vistas: 28,
     likes: 6,
     compartido: false,
-    notificacionesActivas: false
+    notificacionesActivas: true
   }
 ];
 
-// Resto de las funciones sin cambios...
+export const calcularEstadisticasDinamicas = (): EstadisticasHistorial => {
+  const denuncias = denunciasPlaceholder;
+
+  // Agrupaciones personalizadas
+  const resueltas = denuncias.filter(d => d.estado === 'resuelto').length;
+
+  const pendientes = denuncias.filter(d =>
+    ['pendiente', 'en_proceso'].includes(d.estado)
+  ).length;
+
+  const noResueltas = denuncias.filter(d =>
+    ['pendiente', 'en_proceso', 'rechazado', 'cerrado'].includes(d.estado)
+  ).length;
+
+  // Mantener categorías individuales si aún las necesitas por separado
+  const enProceso = denuncias.filter(d => d.estado === 'en_proceso').length;
+  const rechazadas = denuncias.filter(d => d.estado === 'rechazado').length;
+  const cerradas = denuncias.filter(d => d.estado === 'cerrado').length;
+
+  // Calcular tiempo promedio de respuesta
+  const denunciasConRespuesta = denuncias.filter(d => d.tiempoRespuesta !== undefined);
+  const tiempoPromedioRespuesta = denunciasConRespuesta.length > 0
+    ? denunciasConRespuesta.reduce((sum, d) => sum + (d.tiempoRespuesta || 0), 0) / denunciasConRespuesta.length
+    : 0;
+
+  // Calcular satisfacción promedio
+  const denunciasConSatisfaccion = denuncias.filter(d => d.satisfaccionCiudadano !== undefined);
+  const satisfaccionPromedio = denunciasConSatisfaccion.length > 0
+    ? denunciasConSatisfaccion.reduce((sum, d) => sum + (d.satisfaccionCiudadano || 0), 0) / denunciasConSatisfaccion.length
+    : 0;
+
+  // Calcular porcentaje de resolución
+  const porcentajeResolucion = denuncias.length > 0
+    ? (resueltas / denuncias.length) * 100
+    : 0;
+
+  // Contar denuncias por categoría
+  const denunciasPorCategoria: Record<string, number> = {};
+  denuncias.forEach(d => {
+    if (d.categoria) {
+      denunciasPorCategoria[d.categoria] = (denunciasPorCategoria[d.categoria] || 0) + 1;
+    }
+  });
+
+  // Contar denuncias por mes
+  const denunciasPorMes: Record<string, number> = {};
+  denuncias.forEach(d => {
+    const mes = new Date(d.fechaCreacion).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long'
+    });
+    denunciasPorMes[mes] = (denunciasPorMes[mes] || 0) + 1;
+  });
+
+  return {
+    totalDenuncias: denuncias.length,
+    resueltas,
+    pendientes,
+    enProceso,
+    rechazadas,
+    cerradas,
+    noResueltas,
+    tiempoPromedioRespuesta,
+    satisfaccionPromedio,
+    porcentajeResolucion,
+    denunciasPorCategoria,
+    denunciasPorMes,
+    tendencia: 'mejorando'
+  };
+};
+
+// Estadísticas calculadas dinámicamente
+export const estadisticasPlaceholder: EstadisticasHistorial = calcularEstadisticasDinamicas();
+
+// Función para obtener denuncias filtradas
 export const obtenerDenunciasFiltradas = (
   filtros: {
     estado?: string;
@@ -352,10 +385,12 @@ export const obtenerDenunciasFiltradas = (
   return denunciasFiltradas;
 };
 
+// Función para obtener denuncia por ID
 export const obtenerDenunciaPorId = (id: string): HistorialDenuncia | undefined => {
   return denunciasPlaceholder.find(d => d.id === id);
 };
 
+// Función para marcar respuestas como leídas
 export const marcarRespuestasLeidas = (denunciaId: string): void => {
   const denuncia = denunciasPlaceholder.find(d => d.id === denunciaId);
   if (denuncia) {
@@ -365,93 +400,9 @@ export const marcarRespuestasLeidas = (denunciaId: string): void => {
   }
 };
 
-export const obtenerEstadisticasActualizadas = (): EstadisticasHistorial => {
-  const denuncias = denunciasPlaceholder;
-
-  const stats = {
-    totalDenuncias: denuncias.length,
-    resueltas: denuncias.filter(d => d.estado === 'resuelto').length,
-    pendientes: denuncias.filter(d => d.estado === 'pendiente').length,
-    enProceso: denuncias.filter(d => d.estado === 'en_proceso').length,
-    rechazadas: denuncias.filter(d => d.estado === 'rechazado').length,
-    cerradas: denuncias.filter(d => d.estado === 'cerrado').length,
-    tiempoPromedioRespuesta: 0,
-    satisfaccionPromedio: 0,
-    porcentajeResolucion: 0,
-    denunciasPorCategoria: {} as Record<string, number>,
-    denunciasPorMes: {} as Record<string, number>,
-    tendencia: 'estable' as const
-  };
-
-  // Calcular tiempo promedio de respuesta
-  const denunciasConRespuesta = denuncias.filter(d => d.tiempoRespuesta !== undefined);
-  if (denunciasConRespuesta.length > 0) {
-    stats.tiempoPromedioRespuesta = denunciasConRespuesta.reduce((sum, d) => sum + (d.tiempoRespuesta || 0), 0) / denunciasConRespuesta.length;
-  }
-
-  // Calcular satisfacción promedio
-  const denunciasConSatisfaccion = denuncias.filter(d => d.satisfaccionCiudadano !== undefined);
-  if (denunciasConSatisfaccion.length > 0) {
-    stats.satisfaccionPromedio = denunciasConSatisfaccion.reduce((sum, d) => sum + (d.satisfaccionCiudadano || 0), 0) / denunciasConSatisfaccion.length;
-  }
-
-  // Calcular porcentaje de resolución
-  stats.porcentajeResolucion = stats.totalDenuncias > 0 ?
-    (stats.resueltas / stats.totalDenuncias) * 100 : 0;
-
-  // Contar denuncias por categoría
-  denuncias.forEach(d => {
-    if (d.categoria) {
-      stats.denunciasPorCategoria[d.categoria] = (stats.denunciasPorCategoria[d.categoria] || 0) + 1;
-    }
-  });
-
-  // Contar denuncias por mes
-  denuncias.forEach(d => {
-    const mes = new Date(d.fechaCreacion).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'long'
-    });
-    stats.denunciasPorMes[mes] = (stats.denunciasPorMes[mes] || 0) + 1;
-  });
-
-  return stats;
-};
-
 // Función para obtener respuestas no leídas
 export const obtenerRespuestasNoLeidas = (): number => {
   return denunciasPlaceholder.reduce((total, denuncia) => {
     return total + denuncia.respuestas.filter(r => !r.leida).length;
   }, 0);
-};
-
-// Función para calcular estadísticas dinámicamente
-export const calcularEstadisticasDinamicas = (): EstadisticasHistorial => {
-  const denuncias = denunciasPlaceholder;
-
-  const resueltas = denuncias.filter(d => d.estado === 'resuelto').length;
-  const pendientes = denuncias.filter(d => d.estado === 'pendiente').length;
-  const enProceso = denuncias.filter(d => d.estado === 'en_proceso').length;
-
-  return {
-    totalDenuncias: denuncias.length,
-    resueltas,
-    pendientes,
-    enProceso,
-    rechazadas: denuncias.filter(d => d.estado === 'rechazado').length,
-    cerradas: denuncias.filter(d => d.estado === 'cerrado').length,
-    tiempoPromedioRespuesta: 2.8,
-    satisfaccionPromedio: 4.7,
-    porcentajeResolucion: denuncias.length > 0 ? (resueltas / denuncias.length) * 100 : 0,
-    denunciasPorCategoria: {
-      'Alumbrado Público': denuncias.filter(d => d.categoria === 'Alumbrado Público').length,
-      'Infraestructura Vial': denuncias.filter(d => d.categoria === 'Infraestructura Vial').length,
-      'Ruidos Molestos': denuncias.filter(d => d.categoria === 'Ruidos Molestos').length,
-      'Recolección de Basura': denuncias.filter(d => d.categoria === 'Recolección de Basura').length,
-    },
-    denunciasPorMes: {
-      'diciembre 2024': denuncias.length
-    },
-    tendencia: 'mejorando'
-  };
 };

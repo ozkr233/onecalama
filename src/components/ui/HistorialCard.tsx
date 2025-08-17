@@ -177,37 +177,42 @@ export default function HistorialCard({ item, onPress }: HistorialCardProps) {
     switch (estado) {
       case 'resuelto':
         return {
-          main: 'rgba(34, 197, 94, 0.8)',
+          main: 'rgba(34, 197, 94, 0.8)', // Verde
           border: 'rgba(34, 197, 94, 1)',
           shadow: 'rgba(34, 197, 94, 0.4)'
         };
-      case 'en_proceso':
+      case 'pendiente':
         return {
-          main: 'rgba(245, 158, 11, 0.8)',
+          main: 'rgba(245, 158, 11, 0.8)', // Naranja/Amarillo
           border: 'rgba(245, 158, 11, 1)',
           shadow: 'rgba(245, 158, 11, 0.4)'
         };
-      case 'pendiente':
+      case 'en_proceso':
         return {
-          main: 'rgba(107, 114, 128, 0.8)',
-          border: 'rgba(107, 114, 128, 1)',
-          shadow: 'rgba(107, 114, 128, 0.4)'
+          main: 'rgba(245, 158, 11, 0.8)', // Naranja/Amarillo
+          border: 'rgba(245, 158, 11, 1)',
+          shadow: 'rgba(245, 158, 11, 0.4)'
         };
       case 'rechazado':
         return {
-          main: 'rgba(239, 68, 68, 0.8)',
-          border: 'rgba(239, 68, 68, 1)',
-          shadow: 'rgba(239, 68, 68, 0.4)'
+          main: 'rgba(107, 114, 128, 0.8)', // Gris (No resuelto)
+          border: 'rgba(107, 114, 128, 1)',
+          shadow: 'rgba(107, 114, 128, 0.4)'
+        };
+      case 'cerrado':
+        return {
+          main: 'rgba(107, 114, 128, 0.8)', // Gris (No resuelto)
+          border: 'rgba(107, 114, 128, 1)',
+          shadow: 'rgba(107, 114, 128, 0.4)'
         };
       default:
         return {
-          main: 'rgba(59, 130, 246, 0.8)',
-          border: 'rgba(59, 130, 246, 1)',
-          shadow: 'rgba(59, 130, 246, 0.4)'
+          main: 'rgba(107, 114, 128, 0.8)', // Gris por defecto
+          border: 'rgba(107, 114, 128, 1)',
+          shadow: 'rgba(107, 114, 128, 0.4)'
         };
     }
   };
-
   const estadoColors = getEstadoColors(item.estado);
 
   return (

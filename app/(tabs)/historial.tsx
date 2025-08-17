@@ -84,7 +84,7 @@ export default function HistorialScreen() {
   // Renderizar estado vacío
   const renderEmpty = () => (
     <YStack flex={1} justifyContent="center" alignItems="center" p="$8">
-      <YStack alignItems="center" gap="$4" bg="white" p="$6" br="$4" elevate>
+      <YStack alignItems="center" gap="$4" bg="white" p="$6" br="$4" elevation={2}>
         <Text fontSize="$9">📝</Text>
         <H4 color="$textPrimary" textAlign="center">
           No tienes denuncias registradas
@@ -124,7 +124,6 @@ export default function HistorialScreen() {
         screenSubtitle={`${denuncias.length} denuncias registradas`}
         screenIcon="time-outline"
         showNotifications={getNotificacionesNoLeidas() > 0}
-        notificationCount={getNotificacionesNoLeidas()}
       />
 
       <YStack flex={1}>

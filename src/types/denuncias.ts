@@ -24,8 +24,8 @@ export interface DenunciaFormData {
 
 // NUEVO: Tipo para datos de ubicación del mapa
 export interface LocationData {
-  latitude: number;
-  longitude: number;
+  latitud: number;
+  longitud: number;
   address?: string;
 }
 

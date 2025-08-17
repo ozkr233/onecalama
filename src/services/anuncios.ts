@@ -132,7 +132,7 @@ class AnunciosService {
   }> {
     try {
       console.log('🔄 Obteniendo estadísticas de anuncios...');
-      const stats = await ApiClient.get(`${ENDPOINTS.ANUNCIOS}/estadisticas/`);
+      const stats = await ApiClient.get<{ total: number; activos: number; programados: number; finalizados: number }>(`${ENDPOINTS.ANUNCIOS}/estadisticas/`);
       return stats;
     } catch (error) {
       console.error('❌ Error obteniendo estadísticas:', error);

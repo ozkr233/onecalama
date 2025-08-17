@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Text, YStack, XStack, Card, Image, Button } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { AnuncioMunicipal } from '../../types/denuncias';
+import { getImageForAnuncio, getImageInfoForAnuncio } from '../../utils/imageMapping';
 
 interface AnuncioCardProps {
   anuncio: AnuncioMunicipal;
@@ -11,6 +12,10 @@ interface AnuncioCardProps {
 export default function AnuncioCard({ anuncio }: AnuncioCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  // Obtener imagen específica para este anuncio
+  const anuncioImage = getImageForAnuncio(anuncio.id);
+  const imageInfo = getImageInfoForAnuncio(anuncio.id);
 
   // Función para formatear la fecha
   const formatearFecha = (fechaStr: string) => {
@@ -94,18 +99,34 @@ export default function AnuncioCard({ anuncio }: AnuncioCardProps) {
         </XStack>
       </XStack>
 
-      {/* Imagen placeholder - No funcional por ahora */}
+      {/* Imagen específica del anuncio */}
       {(anuncio.imagenes && anuncio.imagenes.length > 0) && (
         <YStack gap="$2">
           {!imageError ? (
             <Card br="$3" overflow="hidden">
               <Image
-                source={require('../../../assets/images/icon.png')} // Placeholder
+                source={anuncioImage}
                 w="100%"
                 h={180}
                 objectFit="cover"
                 onError={() => setImageError(true)}
               />
+              {/* Badge con descripción de la imagen */}
+              {imageInfo && (
+                <XStack
+                  position="absolute"
+                  bottom="$2"
+                  right="$2"
+                  bg="rgba(0,0,0,0.7)"
+                  px="$2"
+                  py="$1"
+                  br="$2"
+                >
+                  <Text fontSize="$1" color="white" opacity={0.9}>
+                    {imageInfo.description}
+                  </Text>
+                </XStack>
+              )}
             </Card>
           ) : (
             <Card
@@ -122,6 +143,11 @@ export default function AnuncioCard({ anuncio }: AnuncioCardProps) {
                 <Text fontSize="$3" color="$textSecondary">
                   Imagen no disponible
                 </Text>
+                {imageInfo && (
+                  <Text fontSize="$2" color="$textSecondary" ta="center">
+                    {imageInfo.description}
+                  </Text>
+                )}
               </YStack>
             </Card>
           )}

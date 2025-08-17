@@ -1,5 +1,5 @@
 // src/services/historial.ts
-import { api } from './api';
+import api from './api';
 import { HistorialDenuncia, FiltrosHistorial, EstadisticasHistorial, Respuesta } from '../types/historial';
 
 export class HistorialService {
@@ -26,7 +26,7 @@ export class HistorialService {
         params.append('busqueda', filtros.busqueda);
       }
 
-      const response = await api.get(`/historial/denuncias?${params.toString()}`);
+      const response : any = await api.get(`/historial/denuncias?${params.toString()}`);
       return response.data.results || response.data;
     } catch (error) {
       console.error('Error al obtener historial:', error);
@@ -39,7 +39,7 @@ export class HistorialService {
    */
   static async obtenerDenunciaPorId(id: string): Promise<HistorialDenuncia> {
     try {
-      const response = await api.get(`/historial/denuncias/${id}`);
+      const response:any = await api.get(`/historial/denuncias/${id}`);
       return response.data;
     } catch (error) {
       console.error('Error al obtener denuncia:', error);
@@ -52,7 +52,7 @@ export class HistorialService {
    */
   static async obtenerRespuestasDenuncia(denunciaId: string): Promise<Respuesta[]> {
     try {
-      const response = await api.get(`/historial/denuncias/${denunciaId}/respuestas`);
+      const response:any = await api.get(`/historial/denuncias/${denunciaId}/respuestas`);
       return response.data.results || response.data;
     } catch (error) {
       console.error('Error al obtener respuestas:', error);
@@ -95,7 +95,7 @@ export class HistorialService {
    */
   static async obtenerEstadisticas(): Promise<EstadisticasHistorial> {
     try {
-      const response = await api.get('/historial/estadisticas');
+      const response:any = await api.get('/historial/estadisticas');
       return response.data;
     } catch (error) {
       console.error('Error al obtener estadísticas:', error);
@@ -115,7 +115,7 @@ export class HistorialService {
    */
   static async descargarEvidencia(evidenciaId: string): Promise<string> {
     try {
-      const response = await api.get(`/historial/evidencias/${evidenciaId}/download`, {
+      const response :any= await api.get(`/historial/evidencias/${evidenciaId}/download`, {
         responseType: 'blob'
       });
       // En una app real, esto devolvería la URL o el blob para mostrar/descargar
@@ -131,7 +131,7 @@ export class HistorialService {
    */
   static async obtenerNotificacionesNoLeidas(): Promise<number> {
     try {
-      const response = await api.get('/historial/notificaciones/no-leidas');
+      const response : any = await api.get('/historial/notificaciones/no-leidas');
       return response.data.count || 0;
     } catch (error) {
       console.error('Error al obtener notificaciones:', error);

@@ -1,4 +1,4 @@
-// src/types/evidence.ts
+/*// src/types/evidence.ts
 export interface Evidence {
   id: string;
   uri: string;
@@ -16,11 +16,11 @@ export interface DenunciaFormData {
   departamento: string;
   direccion: string;
   ubicacion?: LocationData;
-  evidencias: Evidence[]; // ← Agregar esta línea
+  evidencias: Evidence[]; // Nueva propiedad para evidencias locales
 }
 
 export interface LocationData {
   latitude: number;
   longitude: number;
   address?: string;
-}
+} */

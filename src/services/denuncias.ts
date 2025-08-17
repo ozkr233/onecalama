@@ -13,6 +13,8 @@ import {
 } from '../types/denuncias';
 import { anunciosMockData } from '../data/anunciosMock';
 
+
+
 class DenunciasService {
   private readonly endpoints = {
     categorias: '/categorias/',
@@ -171,7 +173,7 @@ class DenunciasService {
       console.log('✅ Publicación creada exitosamente:', response);
       return response;
 
-    } catch (error) {
+    } catch (error:any) {
       console.error('❌ Error creando publicación:', error);
 
       // Mejorar mensajes de error

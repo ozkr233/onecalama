@@ -183,7 +183,6 @@ const EvidenceSection: React.FC<EvidenceSectionProps> = ({
           pressStyle={{
             scale: 0.98,
             bg: '$primary',
-            color: 'white'
           }}
           style={{
             shadowColor: '#E67E22',
@@ -216,7 +215,6 @@ const EvidenceSection: React.FC<EvidenceSectionProps> = ({
           pressStyle={{
             scale: 0.98,
             bg: '$secondary',
-            color: 'white'
           }}
           style={{
             shadowColor: '#009688',

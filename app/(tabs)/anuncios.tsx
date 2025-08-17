@@ -178,7 +178,8 @@ export default function AnunciosScreen() {
                 disabled={loading}
                 pressStyle={{
                   bg: "$primary",
-                  color: "white"
+                  borderColor: "$primary",
+                  scale: 0.95
                 }}
               >
                 <XStack ai="center" gap="$1">

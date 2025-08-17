@@ -65,16 +65,15 @@ export const formatearFechaCompleta = (fecha: string): string => {
 // Obtener color del estado
 export const getEstadoColor = (estado: EstadoDenuncia): string => {
   const colores = {
-    pendiente: '#6B7280', // Gris
-    en_proceso: '#F59E0B', // Amarillo/Naranja
     resuelto: '#10B981', // Verde
-    rechazado: '#EF4444', // Rojo
-    cerrado: '#374151' // Gris oscuro
+    pendiente: '#F59E0B', // Naranja/Amarillo
+    en_proceso: '#F59E0B', // Naranja/Amarillo
+    rechazado: '#6B7280', // Gris (No resuelto)
+    cerrado: '#6B7280' // Gris (No resuelto)
   };
 
   return colores[estado] || '#6B7280';
 };
-
 // Obtener texto legible del estado
 export const getEstadoTexto = (estado: EstadoDenuncia): string => {
   const textos = {

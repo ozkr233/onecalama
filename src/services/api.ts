@@ -1,343 +1,365 @@
-// src/services/api.ts
-// import AsyncStorage from '@react-native-async-storage/async-storage';
+// src/services/api.ts - SERVICIO API ACTUALIZADO PARA CONEXIÓN REAL
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ACTIVE_CONFIG, ENDPOINTS, COMMON_HEADERS, TIMEOUTS, ERROR_MESSAGES } from '../constants/api';
 
-export interface RequestOptions extends RequestInit {
+interface RequestOptions extends RequestInit {
   timeout?: number;
-  retries?: number;
-  cache?: boolean;
-  cacheTTL?: number;
+  useAuth?: boolean;
 }
 
-interface CacheData<T> {
+interface CacheItem<T> {
   data: T;
   timestamp: number;
   expiry: number;
 }
 
-// Alternativa temporal para AsyncStorage
-class TempStorage {
-  private storage: Map<string, string> = new Map();
-
-  async getItem(key: string): Promise<string | null> {
-    return this.storage.get(key) || null;
-  }
-
-  async setItem(key: string, value: string): Promise<void> {
-    this.storage.set(key, value);
-  }
-
-  async removeItem(key: string): Promise<void> {
-    this.storage.delete(key);
-  }
-}
-
-const AsyncStorage = new TempStorage();
-
-export interface RequestOptions extends RequestInit {
-  timeout?: number;
-  retries?: number;
-  cache?: boolean;
-  cacheTTL?: number;
-}
-
-interface CacheData<T> {
-  data: T;
-  timestamp: number;
-  expiry: number;
-}
-
-class ApiClient {
-  private baseURL: string;
-  private defaultTimeout: number;
-  private cache: Map<string, CacheData<any>>;
-  private pendingRequests: Map<string, Promise<any>>;
+class ApiService {
+  private cache = new Map<string, CacheItem<any>>();
+  private defaultTimeout = ACTIVE_CONFIG.timeout;
 
   constructor() {
-    this.baseURL = process.env.EXPO_PUBLIC_API_URL || 'https://tu-api.com/api';
-    this.defaultTimeout = 8000;
-    this.cache = new Map();
-    this.pendingRequests = new Map();
-
-    // Limpiar cache cada 5 minutos
-    setInterval(() => this.cleanExpiredCache(), 5 * 60 * 1000);
+    console.log(`🔧 ApiService inicializado con base URL: ${ACTIVE_CONFIG.baseURL}`);
   }
 
-  private cleanExpiredCache(): void {
-    const now = Date.now();
-    for (const [key, value] of this.cache.entries()) {
-      if (now > value.timestamp + value.expiry) {
-        this.cache.delete(key);
-      }
-    }
-  }
-
-  private getCacheKey(url: string, options?: RequestOptions): string {
-    const body = options?.body || '';
-    const method = options?.method || 'GET';
-    return `${url}-${JSON.stringify(body)}-${method}`;
-  }
-
-  private getFromCache<T>(key: string): T | null {
-    const cached = this.cache.get(key);
-    if (!cached) {
-      return null;
-    }
-
-    const now = Date.now();
-    if (now > cached.timestamp + cached.expiry) {
-      this.cache.delete(key);
-      return null;
-    }
-
-    return cached.data;
-  }
-
-  private setCache<T>(key: string, data: T, ttl: number = 5 * 60 * 1000): void {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      expiry: ttl
-    });
-  }
-
+  // Obtener token de autenticación
   private async getAuthToken(): Promise<string | null> {
     try {
-      // Por ahora retorna null - puedes implementar tu lógica de auth aquí
-      // return await AsyncStorage.getItem('authToken');
-      return null;
+      // Primero intentar obtener de AsyncStorage
+      let token = await AsyncStorage.getItem('authToken');
+
+      // Si no hay token en storage, usar el hardcoded temporalmente
+      if (!token) {
+        token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1NTQ0ODkzLCJpYXQiOjE3NTU0NTg0OTMsImp0aSI6ImQ4N2ZmNGFhOWUyYzRiNjBhY2NkOTM4ZDE1ZTM5NjFhIiwicnV0IjoiMjAxMjM5MzAtNSJ9.7aOnsnHXHNoduRqk8CPkYQ-Fk7cDrrjg1iEtbtAv3Cc';
+        console.log('🔑 Usando token hardcoded temporalmente');
+
+        // Opcional: guardarlo en AsyncStorage para futuras peticiones
+        await AsyncStorage.setItem('authToken', token);
+      }
+
+      return token;
     } catch (error) {
-      console.warn('Error obteniendo token:', error);
+      console.warn('⚠️ Error obteniendo token:', error);
       return null;
     }
   }
 
+  // Crear headers para la petición
+  private async buildHeaders(useAuth: boolean = false): Promise<Record<string, string>> {
+    const headers = { ...COMMON_HEADERS };
+
+    if (useAuth) {
+      const token = await this.getAuthToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+    return headers;
+  }
+
+  // Petición con timeout
   private async requestWithTimeout(url: string, options: RequestOptions = {}): Promise<Response> {
     const timeout = options.timeout || this.defaultTimeout;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
+      const headers = await this.buildHeaders(options.useAuth);
+
+      console.log(`🚀 Petición: ${options.method || 'GET'} ${url}`);
+
       const response = await fetch(url, {
         ...options,
+        headers: { ...headers, ...options.headers },
         signal: controller.signal,
       });
+
       clearTimeout(timeoutId);
+
+      console.log(`📡 Respuesta: ${response.status} ${response.statusText}`);
+
       return response;
     } catch (error) {
       clearTimeout(timeoutId);
       if (error.name === 'AbortError') {
-        throw new Error(`Tiempo de espera agotado (${timeout}ms)`);
+        throw new Error(`⏱️ ${ERROR_MESSAGES.TIMEOUT}`);
       }
       throw error;
     }
   }
 
-  private async requestWithRetry<T>(url: string, options: RequestOptions = {}): Promise<T> {
-    const maxRetries = options.retries || 2;
-    let lastError: Error;
+  // Manejar respuesta de la API
+  private async handleResponse<T>(response: Response): Promise<T> {
+    if (!response.ok) {
+      let errorMessage = ERROR_MESSAGES.UNKNOWN_ERROR;
+      let errorDetails = {};
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      // Intentar obtener detalles del error del servidor
       try {
-        const response = await this.requestWithTimeout(url, options);
+        const errorData = await response.json();
+        console.log('🔍 Error del servidor:', errorData);
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            errorData.detail ||
-            errorData.message ||
-            `HTTP ${response.status}: ${response.statusText}`
-          );
+        errorDetails = errorData;
+
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        } else if (errorData.non_field_errors) {
+          errorMessage = Array.isArray(errorData.non_field_errors)
+            ? errorData.non_field_errors.join(', ')
+            : errorData.non_field_errors;
+        } else {
+          // Si hay errores de campo, mostrarlos
+          const fieldErrors = [];
+          for (const [field, errors] of Object.entries(errorData)) {
+            if (Array.isArray(errors)) {
+              fieldErrors.push(`${field}: ${errors.join(', ')}`);
+            } else if (typeof errors === 'string') {
+              fieldErrors.push(`${field}: ${errors}`);
+            }
+          }
+          if (fieldErrors.length > 0) {
+            errorMessage = fieldErrors.join('\n');
+          }
         }
-
-        return await response.json();
-      } catch (error) {
-        lastError = error as Error;
-
-        // No reintentar errores 4xx
-        if (error.message.includes('4')) {
-          throw error;
-        }
-
-        // Esperar antes del siguiente intento
-        if (attempt < maxRetries) {
-          const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
-          await new Promise(resolve => setTimeout(resolve, delay));
+      } catch (parseError) {
+        console.log('⚠️ No se pudo parsear error como JSON, usando texto plano');
+        try {
+          errorMessage = await response.text();
+        } catch {
+          // Usar mensaje por defecto si no se puede obtener nada
         }
       }
-    }
 
-    throw lastError;
-  }
-
-  async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-    const cacheKey = this.getCacheKey(url, options);
-
-    // Verificar cache para GET requests
-    if ((!options.method || options.method === 'GET') && options.cache !== false) {
-      const cached = this.getFromCache<T>(cacheKey);
-      if (cached) {
-        console.log(`[CACHE] Hit: ${endpoint}`);
-        return cached;
+      // Mensajes específicos por código de estado
+      switch (response.status) {
+        case 401:
+          errorMessage = ERROR_MESSAGES.UNAUTHORIZED;
+          await AsyncStorage.removeItem('authToken');
+          break;
+        case 403:
+          errorMessage = ERROR_MESSAGES.FORBIDDEN;
+          break;
+        case 404:
+          errorMessage = ERROR_MESSAGES.NOT_FOUND;
+          break;
+        case 408:
+          errorMessage = ERROR_MESSAGES.TIMEOUT;
+          break;
+        case 422:
+          errorMessage = ERROR_MESSAGES.VALIDATION_ERROR + (errorMessage !== ERROR_MESSAGES.UNKNOWN_ERROR ? `\n\n${errorMessage}` : '');
+          break;
+        case 500:
+        case 502:
+        case 503:
+        case 504:
+          errorMessage = ERROR_MESSAGES.SERVER_ERROR;
+          break;
       }
 
-      // Evitar requests duplicados
-      if (this.pendingRequests.has(cacheKey)) {
-        console.log(`[API] Request pendiente: ${endpoint}`);
-        return this.pendingRequests.get(cacheKey);
-      }
-    }
-
-    const token = await this.getAuthToken();
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const requestOptions: RequestOptions = {
-      ...options,
-      headers: {
-        ...headers,
-        ...options.headers,
-      },
-    };
-
-    const requestPromise = this.requestWithRetry<T>(url, requestOptions);
-
-    // Guardar request pendiente para GET
-    if ((!options.method || options.method === 'GET') && options.cache !== false) {
-      this.pendingRequests.set(cacheKey, requestPromise);
-    }
-
-    try {
-      const result = await requestPromise;
-
-      // Cachear resultado para GET requests
-      if ((!options.method || options.method === 'GET') && options.cache !== false) {
-        const ttl = options.cacheTTL || 5 * 60 * 1000;
-        this.setCache(cacheKey, result, ttl);
-      }
-
-      return result;
-    } catch (error) {
-      console.error(`[API] Error en ${endpoint}:`, error.message);
-      throw error;
-    } finally {
-      this.pendingRequests.delete(cacheKey);
-    }
-  }
-
-  async get<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'GET',
-      cache: options.cache !== false,
-      cacheTTL: options.cacheTTL || 5 * 60 * 1000
-    });
-  }
-
-  async post<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-      cache: false,
-    });
-  }
-
-  async put<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
-      cache: false,
-    });
-  }
-
-  async patch<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'PATCH',
-      body: data ? JSON.stringify(data) : undefined,
-      cache: false,
-    });
-  }
-
-  async delete<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    return this.request<T>(endpoint, {
-      ...options,
-      method: 'DELETE',
-      cache: false,
-    });
-  }
-
-  async postFormData<T>(endpoint: string, formData: FormData, options: RequestOptions = {}): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-    const token = await this.getAuthToken();
-
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const requestOptions: RequestOptions = {
-      ...options,
-      method: 'POST',
-      headers: {
-        ...headers,
-        ...options.headers,
-      },
-      body: formData,
-      timeout: options.timeout || 15000,
-    };
-
-    try {
-      return await this.requestWithRetry<T>(url, requestOptions);
-    } catch (error) {
-      console.error(`[API] Error en FormData ${endpoint}:`, error);
-      throw error;
-    }
-  }
-
-  clearCache(): void {
-    this.cache.clear();
-    console.log('[CACHE] Cache limpiado');
-  }
-
-  getCacheSize(): number {
-    return this.cache.size;
-  }
-
-  async checkConnection(): Promise<boolean> {
-    try {
-      await this.get('/health', {
-        timeout: 3000,
-        cache: false,
-        retries: 0
+      console.error(`❌ HTTP ${response.status} Error:`, {
+        status: response.status,
+        statusText: response.statusText,
+        errorMessage,
+        errorDetails
       });
+
+      const error = new Error(errorMessage);
+      (error as any).status = response.status;
+      (error as any).details = errorDetails;
+      throw error;
+    }
+
+    const data = await response.json();
+    return data;
+  }
+
+  // GET request
+  async get<T>(endpoint: string, useAuth: boolean = false): Promise<T> {
+    const url = `${ACTIVE_CONFIG.baseURL}${endpoint}`;
+
+    try {
+      const response = await this.requestWithTimeout(url, {
+        method: 'GET',
+        useAuth,
+        timeout: TIMEOUTS.GET_LIST,
+      });
+
+      return await this.handleResponse<T>(response);
+    } catch (error) {
+      console.error(`❌ GET Error [${endpoint}]:`, error);
+      throw error;
+    }
+  }
+
+  // POST request
+  async post<T>(endpoint: string, data: any, useAuth: boolean = true): Promise<T> {
+    const url = `${ACTIVE_CONFIG.baseURL}${endpoint}`;
+
+    try {
+      const response = await this.requestWithTimeout(url, {
+        method: 'POST',
+        body: JSON.stringify(data),
+        useAuth,
+        timeout: TIMEOUTS.CREATE,
+      });
+
+      return await this.handleResponse<T>(response);
+    } catch (error) {
+      console.error(`❌ POST Error [${endpoint}]:`, error);
+      throw error;
+    }
+  }
+
+  // PUT request
+  async put<T>(endpoint: string, data: any, useAuth: boolean = true): Promise<T> {
+    const url = `${ACTIVE_CONFIG.baseURL}${endpoint}`;
+
+    try {
+      const response = await this.requestWithTimeout(url, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+        useAuth,
+        timeout: TIMEOUTS.UPDATE,
+      });
+
+      return await this.handleResponse<T>(response);
+    } catch (error) {
+      console.error(`❌ PUT Error [${endpoint}]:`, error);
+      throw error;
+    }
+  }
+
+  // DELETE request
+  async delete<T>(endpoint: string, useAuth: boolean = true): Promise<T> {
+    const url = `${ACTIVE_CONFIG.baseURL}${endpoint}`;
+
+    try {
+      const response = await this.requestWithTimeout(url, {
+        method: 'DELETE',
+        useAuth,
+        timeout: TIMEOUTS.DELETE,
+      });
+
+      return await this.handleResponse<T>(response);
+    } catch (error) {
+      console.error(`❌ DELETE Error [${endpoint}]:`, error);
+      throw error;
+    }
+  }
+
+  // MÉTODOS ESPECÍFICOS PARA TU APP
+
+  // Test de conexión
+  async testHealth(): Promise<any> {
+    return this.get(ENDPOINTS.HEALTH);
+  }
+
+  // Obtener categorías
+  async getCategorias(): Promise<any[]> {
+    return this.get<any[]>(ENDPOINTS.CATEGORIAS);
+  }
+
+  // Obtener departamentos
+  async getDepartamentos(): Promise<any[]> {
+    return this.get<any[]>(ENDPOINTS.DEPARTAMENTOS);
+  }
+
+  // Obtener juntas vecinales
+  async getJuntasVecinales(): Promise<any[]> {
+    return this.get<any[]>(ENDPOINTS.JUNTAS_VECINALES);
+  }
+
+  // Obtener situaciones
+  async getSituaciones(): Promise<any[]> {
+    return this.get<any[]>(ENDPOINTS.SITUACIONES);
+  }
+
+  // Obtener publicaciones
+  async getPublicaciones(page: number = 1, pageSize: number = 10): Promise<any> {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      page_size: pageSize.toString(),
+    });
+
+    return this.get(`${ENDPOINTS.PUBLICACIONES}?${params}`, true);
+  }
+
+  // Crear publicación
+  async crearPublicacion(data: any): Promise<any> {
+    return this.post(ENDPOINTS.PUBLICACIONES, data, true);
+  }
+
+  // Obtener mis publicaciones
+  async getMisPublicaciones(): Promise<any[]> {
+    return this.get<any[]>(ENDPOINTS.MIS_PUBLICACIONES, true);
+  }
+
+  // Login
+  async login(email: string, password: string): Promise<any> {
+    const response = await this.post(ENDPOINTS.AUTH.LOGIN, {
+      email,
+      password,
+    }, false);
+
+    // Guardar token si el login es exitoso
+    if (response.access_token || response.token) {
+      const token = response.access_token || response.token;
+      await AsyncStorage.setItem('authToken', token);
+      console.log('✅ Token guardado exitosamente');
+    }
+
+    return response;
+  }
+
+  // Logout
+  async logout(): Promise<void> {
+    try {
+      await this.post(ENDPOINTS.AUTH.LOGOUT, {}, true);
+    } catch (error) {
+      console.warn('⚠️ Error en logout del servidor:', error);
+    } finally {
+      // Siempre limpiar el token local
+      await AsyncStorage.removeItem('authToken');
+      console.log('🗑️ Token eliminado localmente');
+    }
+  }
+
+  // Obtener perfil del usuario
+  async getProfile(): Promise<any> {
+    return this.get(ENDPOINTS.AUTH.PROFILE, true);
+  }
+
+  // Verificar si hay token válido
+  async hasValidToken(): Promise<boolean> {
+    const token = await this.getAuthToken();
+    if (!token) return false;
+
+    try {
+      // Intentar obtener el perfil para validar el token
+      await this.getProfile();
       return true;
-    } catch {
+    } catch (error) {
+      // Si falla, el token no es válido
+      await AsyncStorage.removeItem('authToken');
       return false;
     }
   }
 
-  async preloadCriticalData(): Promise<void> {
-    try {
-      console.log('[API] Precargando datos criticos...');
-      await Promise.allSettled([
-        this.get('/categorias/', { cacheTTL: 30 * 60 * 1000 }),
-        this.get('/departamentos/', { cacheTTL: 30 * 60 * 1000 }),
-        this.get('/juntas-vecinales/', { cacheTTL: 60 * 60 * 1000 }),
-      ]);
-      console.log('[API] Datos criticos precargados');
-    } catch (error) {
-      console.warn('[API] Error precargando datos:', error);
-    }
+  // Limpiar cache
+  clearCache(): void {
+    this.cache.clear();
+    console.log('🗑️ Cache limpiado');
   }
 }
 
-export default new ApiClient();
+// Exportar instancia singleton
+export const apiService = new ApiService();
+
+// También exportar la clase para testing
+export default ApiService;

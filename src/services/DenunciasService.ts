@@ -3,7 +3,6 @@ import { apiService } from './api';
 import { DenunciaFormData } from '../types/denuncias';
 import AuthHelper from '../utils/authHelper';
 import UserHelper from '../utils/userHelper';
-import { evidenciasService } from './evidenciasService';
 
 // Interfaces basadas en tu backend Django
 interface Categoria {
@@ -263,39 +262,10 @@ class DenunciasService {
         titulo: nuevaPublicacion.titulo
       });
 
-      // NUEVO: Subir evidencias reales si las hay
+      // TODO: Subir evidencias si las hay
       if (formData.evidencias && formData.evidencias.length > 0) {
-        console.log(`📎 Subiendo ${formData.evidencias.length} evidencias reales...`);
-
-        try {
-          // Validar evidencias antes de subir
-          const validation = evidenciasService.validateEvidencias(formData.evidencias);
-          if (!validation.isValid) {
-            console.warn('⚠️ Algunas evidencias no son válidas:', validation.errors);
-            // Continuar pero mostrar advertencia
-          }
-
-          // Subir evidencias al servidor
-          const evidenciasSubidas = await evidenciasService.subirEvidencias(
-            nuevaPublicacion.id,
-            formData.evidencias
-          );
-
-          console.log(`✅ ${evidenciasSubidas.length} evidencias subidas exitosamente`);
-
-          // Agregar las evidencias a la respuesta
-          nuevaPublicacion.evidencias = evidenciasSubidas;
-
-        } catch (evidenciaError) {
-          console.error('❌ Error subiendo evidencias:', evidenciaError);
-
-          // No fallar la creación de la publicación por esto
-          // Solo logear el error y continuar
-          console.warn('⚠️ La publicación se creó pero las evidencias fallaron');
-
-          // Opcional: Podrías lanzar una advertencia específica
-          // throw new Error(`Publicación creada pero error subiendo evidencias: ${evidenciaError.message}`);
-        }
+        console.log(`📎 Evidencias pendientes: ${formData.evidencias.length}`);
+        // Implementar subida de evidencias más tarde
       }
 
       return nuevaPublicacion;

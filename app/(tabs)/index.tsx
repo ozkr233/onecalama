@@ -309,3 +309,19 @@ export default function HomeScreen() {
     </>
   );
 }
+
+// app/test-api.tsx - PANTALLA TEMPORAL PARA PROBAR LA API
+{/*import React from 'react';
+import { SafeAreaView, StatusBar } from 'react-native';
+import ApiTestComponent from '../../src/components/debug/ApiTestComponent';
+
+export default function TestApiScreen() {
+  return (
+    <>
+      <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+        <ApiTestComponent />
+      </SafeAreaView>
+    </>
+  );
+}*/}

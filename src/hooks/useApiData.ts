@@ -1,113 +1,377 @@
-// src/hooks/useApiData.ts
-import { useState, useEffect } from 'react';
-import { OptionItem, Departamento, Categoria } from '../types';
-import { ENDPOINTS as API_ROUTES } from '../constants/api.ts';
+// src/hooks/useApiData.ts - HOOK COMPLETO Y CORREGIDO
+import { useState, useEffect, useCallback } from 'react';
+import { denunciasService } from '../services/denuncias';
+import {
+  Categoria,
+  DepartamentoMunicipal,
+  JuntaVecinal,
+  SituacionPublicacion,
+  Publicacion,
+  DenunciaFormData,
+  Evidence
+} from '../types/denuncias';
 
-interface UseApiDataReturn {
-  departamentos: OptionItem[];
-  categorias: OptionItem[];
-  isLoadingDepartamentos: boolean;
-  isLoadingCategorias: boolean;
-  errorDepartamentos: string | null;
-  errorCategorias: string | null;
-  refetchDepartamentos: () => void;
-  refetchCategorias: () => void;
+// Interface genérica para estados de carga
+interface ApiState<T> {
+  data: T | null;
+  loading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
 }
 
-// Datos por defecto como fallback
-const DEFAULT_DEPARTAMENTOS: OptionItem[] = [
-  { id: '1', nombre: 'Aseo y Ornato' },
-  { id: '2', nombre: 'Tránsito' },
-  { id: '3', nombre: 'Obras Municipales' },
-  { id: '4', nombre: 'Medio Ambiente' },
-  { id: '5', nombre: 'Seguridad Ciudadana' },
-  { id: '6', nombre: 'Servicios Públicos' },
-];
+// Hook para categorías
+export const useCategorias = (): ApiState<Categoria[]> => {
+  const [data, setData] = useState<Categoria[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-const DEFAULT_CATEGORIAS: OptionItem[] = [
-  { id: '1', nombre: 'Seguridad' },
-  { id: '2', nombre: 'Basura' },
-  { id: '3', nombre: 'Áreas verdes' },
-  { id: '4', nombre: 'Mantención de Calles' },
-  { id: '5', nombre: 'Señales de tránsito' },
-  { id: '6', nombre: 'Contaminación' },
-  { id: '7', nombre: 'Escombros' },
-  { id: '8', nombre: 'Comercio ilegal' },
-];
-
-export const useApiData = (): UseApiDataReturn => {
-  const [departamentos, setDepartamentos] = useState<OptionItem[]>([]);
-  const [categorias, setCategorias] = useState<OptionItem[]>([]);
-  const [isLoadingDepartamentos, setIsLoadingDepartamentos] = useState(false);
-  const [isLoadingCategorias, setIsLoadingCategorias] = useState(false);
-  const [errorDepartamentos, setErrorDepartamentos] = useState<string | null>(null);
-  const [errorCategorias, setErrorCategorias] = useState<string | null>(null);
-
-  const fetchDepartamentos = async () => {
-    setIsLoadingDepartamentos(true);
-    setErrorDepartamentos(null);
-
+  const fetchCategorias = useCallback(async () => {
     try {
-      const response = await fetch(API_ROUTES.MUNICIPALIDAD.DEPARTAMENTOS);
-
-      if (response.ok) {
-        const data: Departamento[] = await response.json();
-        const departamentosFormateados = data.map((dept) => ({
-          id: dept.id.toString(),
-          nombre: dept.nombre
-        }));
-        setDepartamentos(departamentosFormateados);
-      } else {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-    } catch (error) {
-      console.error('Error cargando departamentos:', error);
-      setErrorDepartamentos('Error al cargar departamentos');
-      setDepartamentos(DEFAULT_DEPARTAMENTOS);
+      setLoading(true);
+      setError(null);
+      const categorias = await denunciasService.getCategorias();
+      setData(categorias);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar categorías');
+      console.error('Error en useCategorias:', err);
     } finally {
-      setIsLoadingDepartamentos(false);
+      setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchCategorias();
+  }, [fetchCategorias]);
+
+  return {
+    data,
+    loading,
+    error,
+    refresh: fetchCategorias,
   };
+};
 
-  const fetchCategorias = async () => {
-    setIsLoadingCategorias(true);
-    setErrorCategorias(null);
+// Hook para departamentos municipales
+export const useDepartamentos = (): ApiState<DepartamentoMunicipal[]> => {
+  const [data, setData] = useState<DepartamentoMunicipal[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  const fetchDepartamentos = useCallback(async () => {
     try {
-      const response = await fetch(API_ROUTES.CATEGORIAS);
-
-      if (response.ok) {
-        const data: Categoria[] = await response.json();
-        const categoriasFormateadas = data.map((cat) => ({
-          id: cat.id.toString(),
-          nombre: cat.nombre
-        }));
-        setCategorias(categoriasFormateadas);
-      } else {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-    } catch (error) {
-      console.error('Error cargando categorías:', error);
-      setErrorCategorias('Error al cargar categorías');
-      setCategorias(DEFAULT_CATEGORIAS);
+      setLoading(true);
+      setError(null);
+      const departamentos = await denunciasService.getDepartamentos();
+      setData(departamentos);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar departamentos');
+      console.error('Error en useDepartamentos:', err);
     } finally {
-      setIsLoadingCategorias(false);
+      setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchDepartamentos();
-    fetchCategorias();
+  }, [fetchDepartamentos]);
+
+  return {
+    data,
+    loading,
+    error,
+    refresh: fetchDepartamentos,
+  };
+};
+
+// Hook para juntas vecinales
+export const useJuntasVecinales = (): ApiState<JuntaVecinal[]> => {
+  const [data, setData] = useState<JuntaVecinal[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchJuntasVecinales = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const juntas = await denunciasService.getJuntasVecinales();
+      setData(juntas);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar juntas vecinales');
+      console.error('Error en useJuntasVecinales:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchJuntasVecinales();
+  }, [fetchJuntasVecinales]);
+
+  return {
+    data,
+    loading,
+    error,
+    refresh: fetchJuntasVecinales,
+  };
+};
+
+// Hook para situaciones
+export const useSituaciones = (): ApiState<SituacionPublicacion[]> => {
+  const [data, setData] = useState<SituacionPublicacion[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchSituaciones = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const situaciones = await denunciasService.getSituaciones();
+      setData(situaciones);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar situaciones');
+      console.error('Error en useSituaciones:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSituaciones();
+  }, [fetchSituaciones]);
+
+  return {
+    data,
+    loading,
+    error,
+    refresh: fetchSituaciones,
+  };
+};
+
+// Hook para publicaciones con paginación
+export const usePublicaciones = (initialPage: number = 1) => {
+  const [data, setData] = useState<Publicacion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(initialPage);
+  const [refreshing, setRefreshing] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+
+  const fetchPublicaciones = useCallback(async (pageNum: number, append: boolean = false) => {
+    try {
+      if (!append) {
+        setLoading(true);
+      }
+      setError(null);
+
+      const response = await denunciasService.getPublicaciones(pageNum);
+
+      if (append) {
+        setData(prev => [...prev, ...response.results]);
+      } else {
+        setData(response.results);
+      }
+
+      setTotalCount(response.count);
+      setHasMore(!!response.next);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar publicaciones');
+      console.error('Error en usePublicaciones:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  const loadMore = useCallback(() => {
+    if (hasMore && !loading) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchPublicaciones(nextPage, true);
+    }
+  }, [hasMore, loading, page, fetchPublicaciones]);
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    setPage(1);
+    await fetchPublicaciones(1, false);
+  }, [fetchPublicaciones]);
+
+  useEffect(() => {
+    fetchPublicaciones(page);
   }, []);
 
   return {
-    departamentos,
-    categorias,
-    isLoadingDepartamentos,
-    isLoadingCategorias,
-    errorDepartamentos,
-    errorCategorias,
-    refetchDepartamentos: fetchDepartamentos,
-    refetchCategorias: fetchCategorias,
+    data,
+    loading,
+    error,
+    hasMore,
+    refreshing,
+    totalCount,
+    loadMore,
+    refresh,
+  };
+};
+
+// Hook para obtener una publicación específica
+export const usePublicacion = (id: number | null) => {
+  const [data, setData] = useState<Publicacion | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchPublicacion = useCallback(async () => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const publicacion = await denunciasService.getPublicacionById(id);
+      setData(publicacion);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar la publicación');
+      console.error('Error en usePublicacion:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchPublicacion();
+  }, [fetchPublicacion]);
+
+  return {
+    data,
+    loading,
+    error,
+    refresh: fetchPublicacion,
+  };
+};
+
+// Hook para crear publicaciones
+export const useCreatePublicacion = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const createPublicacion = useCallback(async (
+    formData: DenunciaFormData,
+    evidencias: Evidence[] = []
+  ): Promise<Publicacion | null> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const nuevaPublicacion = await denunciasService.crearPublicacionCompleta(formData, evidencias);
+      console.log('✅ Publicación creada exitosamente:', nuevaPublicacion.id);
+      return nuevaPublicacion;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al crear la publicación';
+      setError(errorMessage);
+      console.error('Error en useCreatePublicacion:', err);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    createPublicacion,
+    loading,
+    error,
+  };
+};
+
+// Hook para estadísticas
+export const useEstadisticas = () => {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchEstadisticas = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const estadisticas = await denunciasService.getEstadisticas();
+      setData(estadisticas);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar estadísticas');
+      console.error('Error en useEstadisticas:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchEstadisticas();
+  }, [fetchEstadisticas]);
+
+  return {
+    data,
+    loading,
+    error,
+    refresh: fetchEstadisticas,
+  };
+};
+
+// Hook para probar la conexión con la API
+export const useConnectionTest = () => {
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  const [testing, setTesting] = useState(false);
+
+  const testConnection = useCallback(async () => {
+    setTesting(true);
+    try {
+      // Intentar obtener categorías como test de conexión
+      await denunciasService.getCategorias();
+      setIsConnected(true);
+      console.log('✅ Conexión con API exitosa');
+    } catch (error) {
+      setIsConnected(false);
+      console.error('❌ Error de conexión con API:', error);
+    } finally {
+      setTesting(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    testConnection();
+  }, [testConnection]);
+
+  return {
+    isConnected,
+    testing,
+    testConnection
+  };
+};
+
+// Hook combinado para cargar todos los datos maestros
+export const useMasterData = () => {
+  const categorias = useCategorias();
+  const departamentos = useDepartamentos();
+  const juntasVecinales = useJuntasVecinales();
+  const situaciones = useSituaciones();
+
+  const loading = categorias.loading || departamentos.loading || juntasVecinales.loading || situaciones.loading;
+  const error = categorias.error || departamentos.error || juntasVecinales.error || situaciones.error;
+
+  const refreshAll = useCallback(async () => {
+    await Promise.all([
+      categorias.refresh(),
+      departamentos.refresh(),
+      juntasVecinales.refresh(),
+      situaciones.refresh(),
+    ]);
+  }, [categorias.refresh, departamentos.refresh, juntasVecinales.refresh, situaciones.refresh]);
+
+  return {
+    categorias: categorias.data || [],
+    departamentos: departamentos.data || [],
+    juntasVecinales: juntasVecinales.data || [],
+    situaciones: situaciones.data || [],
+    loading,
+    error,
+    refreshAll,
   };
 };

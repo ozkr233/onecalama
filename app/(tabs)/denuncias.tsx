@@ -1,25 +1,13 @@
-// app/(tabs)/denuncias.tsx
+// app/(tabs)/denuncias.tsx - CONECTADO A TU API DJANGO REAL
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView, Alert } from 'react-native';
+import { SafeAreaView, Alert, Text, View } from 'react-native';
 import DenunciaForm from '../../src/components/forms/DenunciaForm';
-import { DenunciaFormData } from '../../src/types';
+import { DenunciaFormData } from '../../src/types/denuncias';
 import AppHeader from '../../src/components/layout/AppHeader';
-import { DenunciasService } from '../../src/services';
-
-// 🔧 Tipo para normalizar los datos
-interface NormalizedOption {
-  id: string;
-  nombre: string;
-}
-
-interface NormalizedCategory extends NormalizedOption {
-  departamento?: {
-    id: number;
-    nombre: string;
-  };
-}
+import { denunciasService } from '../../src/services/DenunciasService';
 
 export default function DenunciasScreen() {
+  // Estado inicial del formulario
   const [formData, setFormData] = useState<DenunciaFormData>({
     titulo: '',
     descripcion: '',
@@ -27,12 +15,20 @@ export default function DenunciasScreen() {
     departamento: '',
     direccion: '',
     ubicacion: undefined,
-    evidencias: [] // Inicializar con un array vacío
+    evidencias: [],
   });
 
   const [loading, setLoading] = useState(false);
-  const [departamentos, setDepartamentos] = useState<NormalizedOption[]>([]);
-  const [categorias, setCategorias] = useState<NormalizedCategory[]>([]);
+  const [loadingInitial, setLoadingInitial] = useState(true);
+
+  // Datos REALES desde tu Django API
+  const [departamentos, setDepartamentos] = useState<any[]>([]);
+  const [categorias, setCategorias] = useState<any[]>([]);
+  const [juntasVecinales, setJuntasVecinales] = useState<any[]>([]);
+
+  // Estados de conexión
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     loadInitialData();
@@ -40,100 +36,143 @@ export default function DenunciasScreen() {
 
   const loadInitialData = async () => {
     try {
-      console.log('🔄 Cargando datos desde la API...');
-      const [deptData, catData] = await Promise.all([
-        DenunciasService.getDepartamentos(),
-        DenunciasService.getCategorias(),
-      ]);
+      setLoadingInitial(true);
+      setConnectionError(null);
 
-      // 🔧 FIX: Normalizar los datos para que siempre tengan id como string
-      const departamentosNormalizados: NormalizedOption[] = deptData.map(dept => ({
-        id: String(dept.id), // Convertir a string
-        nombre: dept.nombre
-      }));
+      console.log('🔄 Iniciando carga de datos desde Django...');
 
-      // 🔧 FIX: Mantener categorías con información del departamento COMPLETA
-      const categoriasNormalizadas = catData.map(cat => ({
-        id: String(cat.id), // Convertir a string
-        nombre: cat.nombre,
-        departamento: cat.departamento // Mantener la relación COMPLETA con el departamento
-      }));
+      // Cargar todos los datos desde tu API real
+      const {
+        categorias: categoriasData,
+        departamentos: departamentosData,
+        juntasVecinales: juntasData,
+        isAuthenticated: authStatus
+      } = await denunciasService.cargarDatosIniciales();
 
-      setDepartamentos(departamentosNormalizados);
-      setCategorias(categoriasNormalizadas);
+      setIsAuthenticated(authStatus);
 
-      console.log('✅ Datos cargados y normalizados:', {
-        departamentos: departamentosNormalizados.length,
-        categorias: categoriasNormalizadas.length
+      if (!authStatus) {
+        throw new Error('Token expirado o inválido. Verifica tu autenticación.');
+      }
+
+      // Validar que tengamos datos mínimos
+      if (categoriasData.length === 0 || departamentosData.length === 0) {
+        throw new Error('No se pudieron cargar las categorías o departamentos desde el servidor');
+      }
+
+      setDepartamentos(departamentosData);
+      setCategorias(categoriasData);
+      setJuntasVecinales(juntasData);
+
+      console.log('✅ Datos REALES cargados desde Django:', {
+        departamentos: departamentosData.length,
+        categorias: categoriasData.length,
+        juntasVecinales: juntasData.length
       });
 
-      // 🔧 Debug: Verificar estructura completa
-      console.log('📊 Estructura departamentos:', departamentosNormalizados);
-      console.log('📊 Estructura categorías con departamentos:', categoriasNormalizadas.map(cat => ({
-        id: cat.id,
-        nombre: cat.nombre,
-        departamento: cat.departamento
-      })));
+      // Mostrar los primeros datos para debug
+      console.log('📋 Categorías cargadas:', categoriasData.slice(0, 3).map(c => c.nombre));
+      console.log('📋 Departamentos cargados:', departamentosData.slice(0, 3).map(d => d.nombre));
 
     } catch (error) {
-      console.error('❌ Error cargando datos iniciales:', error);
-      Alert.alert('Error', 'No se pudieron cargar los datos necesarios. Se usarán datos por defecto.');
+      console.error('❌ Error cargando datos desde Django:', error);
+      setConnectionError(error.message);
 
-      // 🔧 Datos de fallback normalizados con departamentos COMPLETOS
-      setDepartamentos([
-        { id: '1', nombre: 'Obras Públicas' },
-        { id: '2', nombre: 'Medio Ambiente' },
-        { id: '3', nombre: 'Servicios Municipales' },
-      ]);
-
-      setCategorias([
-        {
-          id: '1',
-          nombre: 'Seguridad',
-          departamento: { id: 3, nombre: 'Servicios Municipales' }
-        },
-        {
-          id: '2',
-          nombre: 'Basura',
-          departamento: { id: 2, nombre: 'Medio Ambiente' }
-        },
-        {
-          id: '3',
-          nombre: 'Áreas verdes',
-          departamento: { id: 2, nombre: 'Medio Ambiente' }
-        },
-        {
-          id: '4',
-          nombre: 'Mantención de Calles',
-          departamento: { id: 1, nombre: 'Obras Públicas' }
-        },
-        {
-          id: '5',
-          nombre: 'Alumbrado Público',
-          departamento: { id: 1, nombre: 'Obras Públicas' }
-        },
-      ]);
-
-      console.log('🔧 Usando datos de fallback con departamentos');
+      Alert.alert(
+        '⚠️ Error de Conexión',
+        `No se pudieron cargar los datos desde tu servidor Django:\n\n${error.message}\n\n¿Quieres reintentar?`,
+        [
+          {
+            text: 'Reintentar',
+            onPress: () => loadInitialData()
+          },
+          {
+            text: 'Debug API',
+            onPress: () => {
+              // Navegar a la pantalla de debug
+              Alert.alert('Debug', 'Ve a la pantalla de test-api para verificar la conexión');
+            }
+          },
+          {
+            text: 'Usar datos offline',
+            style: 'cancel',
+            onPress: () => useOfflineData()
+          }
+        ]
+      );
+    } finally {
+      setLoadingInitial(false);
     }
   };
 
+  const useOfflineData = () => {
+    console.log('🔄 Usando datos offline por defecto...');
+
+    setDepartamentos([
+      { id: 1, nombre: 'Obras Públicas' },
+      { id: 2, nombre: 'Seguridad Ciudadana' },
+      { id: 3, nombre: 'Medio Ambiente' },
+      { id: 4, nombre: 'Servicios Públicos' },
+    ]);
+
+    setCategorias([
+      { id: 1, nombre: 'Infraestructura' },
+      { id: 2, nombre: 'Servicios Públicos' },
+      { id: 3, nombre: 'Seguridad' },
+      { id: 4, nombre: 'Medio Ambiente' },
+    ]);
+
+    setJuntasVecinales([]);
+    setConnectionError(null);
+    setIsAuthenticated(false);
+  };
+
   const handleSubmit = async () => {
-    setLoading(true);
-    try {
-      console.log('📤 Enviando publicación:', formData);
-
-      const nuevaPublicacion = await DenunciasService.crearPublicacion(formData);
-
-      console.log('✅ Publicación creada:', nuevaPublicacion);
-
+    if (!isAuthenticated) {
       Alert.alert(
-        '✅ Denuncia Enviada',
-        `Tu denuncia ha sido registrada con el código: ${nuevaPublicacion.codigo}. Te notificaremos sobre su progreso.`,
+        '⚠️ Sin Autenticación',
+        'No hay una sesión válida. ¿Quieres verificar la conexión?',
         [
           {
-            text: 'OK',
+            text: 'Verificar',
+            onPress: () => loadInitialData()
+          },
+          { text: 'Cancelar', style: 'cancel' }
+        ]
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('📤 Enviando publicación a Django...');
+      console.log('📊 Datos del formulario:', {
+        titulo: formData.titulo,
+        categoria: formData.categoria,
+        departamento: formData.departamento,
+        evidencias: formData.evidencias.length
+      });
+
+      // Crear publicación en tu Django backend
+      const nuevaPublicacion = await denunciasService.crearPublicacion(formData);
+
+      console.log('✅ Publicación creada exitosamente en Django:', nuevaPublicacion);
+
+      // Mostrar mensaje de éxito con el código real de Django
+      Alert.alert(
+        '✅ ¡Denuncia Enviada a Django!',
+        `Tu denuncia ha sido registrada exitosamente:\n\n` +
+        `📄 Código: ${nuevaPublicacion.codigo}\n` +
+        `🏷️ Título: ${nuevaPublicacion.titulo}\n` +
+        `📅 Fecha: ${new Date(nuevaPublicacion.fecha_publicacion).toLocaleDateString()}\n\n` +
+        `${formData.evidencias.length > 0 ?
+          `📎 Evidencias: ${formData.evidencias.length} archivo(s)\n` : ''
+        }Te notificaremos sobre el progreso de tu solicitud.`,
+        [
+          {
+            text: '🎉 Perfecto',
             onPress: () => {
+              // Limpiar formulario
               setFormData({
                 titulo: '',
                 descripcion: '',
@@ -141,7 +180,7 @@ export default function DenunciasScreen() {
                 departamento: '',
                 direccion: '',
                 ubicacion: undefined,
-                evidencias: [] 
+                evidencias: [],
               });
             }
           }
@@ -149,31 +188,59 @@ export default function DenunciasScreen() {
       );
 
     } catch (error) {
-      console.error('❌ Error enviando publicación:', error);
+      console.error('❌ Error enviando publicación a Django:', error);
+
       Alert.alert(
-        '❌ Error',
-        'No se pudo enviar la denuncia. Verifica tu conexión e intenta nuevamente.'
+        '❌ Error al Enviar',
+        `No se pudo enviar la denuncia a Django:\n\n${error.message}\n\nVerifica tu conexión e intenta nuevamente.`,
+        [
+          { text: 'OK' },
+          {
+            text: 'Verificar Conexión',
+            onPress: () => loadInitialData()
+          }
+        ]
       );
     } finally {
       setLoading(false);
     }
   };
 
+  // Mostrar loading inicial
+  if (loadingInitial) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
+        <AppHeader title="Nueva Denuncia" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={{ fontSize: 18, color: '#3B82F6', marginBottom: 10 }}>
+            🔄 Conectando con Django...
+          </Text>
+          <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
+            Cargando categorías y departamentos desde tu servidor
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+    <SafeAreaView style={{ flex: 1 }}>
       <AppHeader
-        screenTitle="Nueva Denuncia"
-        screenSubtitle="Reporta problemas en tu comunidad"
-        screenIcon="megaphone"
+        title="Nueva Denuncia"
+        subtitle={
+          connectionError ? '⚠️ Modo Offline' :
+          isAuthenticated ? '🌐 Conectado a Django' : '❌ Sin Autenticación'
+        }
       />
 
       <DenunciaForm
         formData={formData}
-        onFormDataChange={setFormData}
+        onFormDataChange={(next) => setFormData(next)}
         onSubmit={handleSubmit}
         loading={loading}
-        departamentos={departamentos} // Datos normalizados
-        categorias={categorias}       // Datos normalizados
+        departamentos={departamentos}
+        categorias={categorias}
+        juntasVecinales={juntasVecinales}
       />
     </SafeAreaView>
   );

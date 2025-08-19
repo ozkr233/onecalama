@@ -1,13 +1,13 @@
-// src/utils/authHelper.ts - Helper para manejar autenticación inicial
+// src/utils/authHelper.ts - Versión Actualizada
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Token temporal que proporcionaste
-const TEMP_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1NTQ0ODkzLCJpYXQiOjE3NTU0NTg0OTMsImp0aSI6ImQ4N2ZmNGFhOWUyYzRiNjBhY2NkOTM4ZDE1ZTM5NjFhIiwicnV0IjoiMjAxMjM5MzAtNSJ9.7aOnsnHXHNoduRqk8CPkYQ-Fk7cDrrjg1iEtbtAv3Cc';
+// Token actualizado - Cambia este token cuando expire
+const TEMP_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1NzMwNzg5LCJpYXQiOjE3NTU2NDQzODksImp0aSI6IjRiN2Q2MjQ0NTZlOTQ3ZjRhM2Y3NWE3MGM1MGQ1ZTE5IiwicnV0IjoiMjAxMjM5MzAtNSJ9.0fnDJKDKpbLG7xOqJ1Ko_VenivpPd0Fs_RqEhy7JFLA';
 
 export class AuthHelper {
 
   /**
-   * Configurar token inicial para pruebas
+   * Configurar token inicial para la app
    */
   static async setupInitialToken(): Promise<void> {
     try {
@@ -20,11 +20,25 @@ export class AuthHelper {
   }
 
   /**
-   * Obtener token actual
+   * Obtener token actual (con verificación de expiración)
    */
   static async getToken(): Promise<string | null> {
     try {
       const token = await AsyncStorage.getItem('authToken');
+
+      if (!token) {
+        console.log('⚠️ No hay token, configurando inicial...');
+        await this.setupInitialToken();
+        return TEMP_TOKEN;
+      }
+
+      // Verificar si está expirado
+      if (this.isTokenExpired(token)) {
+        console.log('⚠️ Token expirado, actualizando...');
+        await this.setupInitialToken();
+        return TEMP_TOKEN;
+      }
+
       return token;
     } catch (error) {
       console.error('❌ Error obteniendo token:', error);
@@ -37,11 +51,11 @@ export class AuthHelper {
    */
   static async hasToken(): Promise<boolean> {
     const token = await this.getToken();
-    return !!token;
+    return !!token && !this.isTokenExpired(token);
   }
 
   /**
-   * Limpiar token
+   * Limpiar token completamente
    */
   static async clearToken(): Promise<void> {
     try {
@@ -53,7 +67,7 @@ export class AuthHelper {
   }
 
   /**
-   * Actualizar token
+   * Actualizar token manualmente
    */
   static async setToken(newToken: string): Promise<void> {
     try {
@@ -61,6 +75,33 @@ export class AuthHelper {
       console.log('🔄 Token actualizado');
     } catch (error) {
       console.error('❌ Error actualizando token:', error);
+    }
+  }
+
+  /**
+   * Forzar actualización del token (útil para desarrollo)
+   */
+  static async actualizarTokenForzado(): Promise<void> {
+    try {
+      console.log('🔄 Forzando actualización de token...');
+      await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.setItem('authToken', TEMP_TOKEN);
+      console.log('✅ Token forzado exitosamente');
+    } catch (error) {
+      console.error('❌ Error en actualización forzada:', error);
+    }
+  }
+
+  /**
+   * Limpiar AsyncStorage completo (útil para development)
+   */
+  static async clearAsyncStorage(): Promise<void> {
+    try {
+      console.log('🧹 Limpiando AsyncStorage completo...');
+      await AsyncStorage.clear();
+      console.log('✅ AsyncStorage limpiado');
+    } catch (error) {
+      console.error('❌ Error limpiando AsyncStorage:', error);
     }
   }
 
@@ -95,7 +136,13 @@ export class AuthHelper {
       }
 
       const currentTime = Math.floor(Date.now() / 1000);
-      return decoded.exp < currentTime;
+      const isExpired = decoded.exp < currentTime;
+
+      if (isExpired) {
+        console.log(`⏰ Token expirado: ${new Date(decoded.exp * 1000).toLocaleString()}`);
+      }
+
+      return isExpired;
     } catch (error) {
       console.error('❌ Error verificando expiración:', error);
       return true;
@@ -117,17 +164,14 @@ export class AuthHelper {
         return null;
       }
 
-      console.log('🔍 Token decodificado:', decoded);
-
       return {
         rut: decoded.rut,
         tokenType: decoded.token_type,
         expiresAt: new Date(decoded.exp * 1000),
         issuedAt: new Date(decoded.iat * 1000),
         jti: decoded.jti,
-        // Agregar cualquier otro campo que esté en tu token
-        userId: decoded.user_id, // Si tu token incluye user_id
-        username: decoded.username, // Si tu token incluye username
+        userId: decoded.user_id || null,
+        username: decoded.username || null,
       };
     } catch (error) {
       console.error('❌ Error obteniendo info del usuario:', error);
@@ -136,13 +180,14 @@ export class AuthHelper {
   }
 
   /**
-   * Verificar estado del token actual
+   * Verificar estado completo del token
    */
   static async checkTokenStatus(): Promise<{
     hasToken: boolean;
     isExpired: boolean;
     userInfo: any;
     remainingTime?: string;
+    tokenPreview?: string;
   }> {
     const token = await this.getToken();
 
@@ -172,7 +217,24 @@ export class AuthHelper {
       isExpired,
       userInfo,
       remainingTime,
+      tokenPreview: token.substring(0, 30) + '...',
     };
+  }
+
+  /**
+   * Debug: Mostrar información completa del token
+   */
+  static async debugTokenInfo(): Promise<void> {
+    console.log('🔍 === DEBUG TOKEN INFO ===');
+
+    const status = await this.checkTokenStatus();
+    console.log('📊 Estado del token:', status);
+
+    if (status.hasToken && status.userInfo) {
+      console.log('👤 Info usuario:', status.userInfo);
+      console.log('⏰ Expira en:', status.remainingTime || 'Token expirado');
+      console.log('🔑 Preview token:', status.tokenPreview);
+    }
   }
 }
 

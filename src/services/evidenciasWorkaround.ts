@@ -1,132 +1,43 @@
-// src/services/evidenciasWorkaround.ts - VERSIÓN FINAL SIMPLIFICADA
+// src/services/evidenciasWorkaround.ts - CON NUEVO SERIALIZER
 import { ACTIVE_CONFIG } from '../constants/api';
 import { Evidence } from '../types/denuncias';
 import AuthHelper from '../utils/authHelper';
-import UserHelper from '../utils/userHelper';
 
 class EvidenciasWorkaround {
 
   /**
-   * Subir evidencia usando el endpoint de imagenes-anuncios que SÍ funciona
-   * SOLUCIÓN FINAL: Solo sube imagen, crea evidencia virtual
+   * Subir evidencia directamente al endpoint de evidencias
+   * Ahora que el serializer está arreglado, podemos usar el endpoint directo
    */
-  async subirEvidenciaWorkaround(publicacionId: number, evidencia: Evidence): Promise<any> {
+  async subirEvidenciaDirecta(publicacionId: number, evidencia: Evidence): Promise<any> {
     try {
-      console.log(`🔧 WORKAROUND: Subiendo evidencia via imagenes-anuncios...`);
-      console.log(`📎 Archivo: ${evidencia.fileName} para publicación ${publicacionId}`);
+      console.log(`📎 Subiendo evidencia directa: ${evidencia.fileName}`);
+      console.log(`📄 Para publicación: ${publicacionId}`);
 
       const token = await AuthHelper.getToken();
       if (!token) {
         throw new Error('No hay token de autenticación');
       }
 
-      // 1. Crear anuncio temporal
-      const anuncioId = await this.crearAnuncioTemporal(token);
-      console.log(`📝 Anuncio temporal creado: ${anuncioId}`);
-
-      // 2. Subir imagen usando el endpoint que SÍ funciona
-      const imagenSubida = await this.subirImagenViaAnuncio(anuncioId, evidencia, token);
-      console.log('✅ Imagen subida exitosamente:', imagenSubida.imagen);
-
-      // 3. Crear evidencia virtual (BD de evidencias está rota)
-      const evidenciaVirtual = {
-        id: `virtual_${Date.now()}`,
-        publicacion: publicacionId,
-        archivo: this.construirUrlCompleta(imagenSubida.imagen),
-        fecha: new Date().toISOString(),
-        extension: this.getFileExtension(evidencia.fileName),
-        workaround: true,
-        status: 'imagen_disponible',
-        cloudinary_path: imagenSubida.imagen,
-        nota: 'Imagen subida exitosamente a Cloudinary, evidencia virtual por workaround'
-      };
-
-      // 4. Limpiar anuncio temporal
-      await this.limpiarAnuncioTemporal(anuncioId, token);
-
-      console.log('✅ Workaround completado exitosamente');
-      return evidenciaVirtual;
-
-    } catch (error) {
-      console.error(`❌ Error en workaround:`, error);
-      throw new Error(`Workaround falló: ${error.message}`);
-    }
-  }
-
-  /**
-   * Crear anuncio temporal para usar su endpoint de imágenes
-   */
-  private async crearAnuncioTemporal(token: string): Promise<number> {
-    try {
-      console.log('👤 Obteniendo ID del usuario...');
-      const usuarioId = await UserHelper.getCurrentUserId();
-
-      console.log('📋 Obteniendo categorías...');
-      const categoriasResponse = await fetch(`${ACTIVE_CONFIG.baseURL}/categorias/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (!categoriasResponse.ok) {
-        throw new Error('No se pudieron obtener las categorías');
-      }
-
-      const categorias = await categoriasResponse.json();
-      const primeraCategoria = categorias.results?.[0] || categorias[0];
-
-      if (!primeraCategoria) {
-        throw new Error('No hay categorías disponibles');
-      }
-
-      const anuncioTemporal = {
-        titulo: 'TEMP_EVIDENCIA',
-        subtitulo: 'Anuncio temporal para workaround de evidencias',
-        descripcion: 'Este anuncio se eliminará automáticamente',
-        categoria: primeraCategoria.id,
-        usuario: usuarioId,
-        estado: 'Temporal'
-      };
-
-      const response = await fetch(`${ACTIVE_CONFIG.baseURL}/anuncios-municipales/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(anuncioTemporal),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Error creando anuncio temporal: ${response.status} - ${errorText}`);
-      }
-
-      const anuncio = await response.json();
-      return anuncio.id;
-
-    } catch (error) {
-      console.error('❌ Error creando anuncio temporal:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Subir imagen via endpoint de imagenes-anuncios
-   */
-  private async subirImagenViaAnuncio(anuncioId: number, evidencia: Evidence, token: string): Promise<any> {
-    try {
+      // Crear FormData para el endpoint de evidencias
       const formData = new FormData();
 
-      formData.append('imagen', {
+      formData.append('archivo', {
         uri: evidencia.uri,
         type: 'image/jpeg',
         name: evidencia.fileName,
       } as any);
 
-      formData.append('anuncio', anuncioId.toString());
+      formData.append('publicacion_id', publicacionId.toString());
       formData.append('extension', this.getFileExtension(evidencia.fileName));
+      formData.append('fecha', new Date().toISOString());
 
-      const response = await fetch(`${ACTIVE_CONFIG.baseURL}/imagenes-anuncios/`, {
+      console.log('📤 FormData para evidencias:');
+      console.log(`   archivo: ${evidencia.fileName}`);
+      console.log(`   publicacion_id: ${publicacionId}`);
+      console.log(`   extension: ${this.getFileExtension(evidencia.fileName)}`);
+
+      const response = await fetch(`${ACTIVE_CONFIG.baseURL}/evidencias/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -136,68 +47,103 @@ class EvidenciasWorkaround {
         body: formData,
       });
 
-      if (!response.ok) {
+      console.log(`📡 Respuesta evidencias: ${response.status} ${response.statusText}`);
+
+      if (response.ok) {
+        const evidencia = await response.json();
+        console.log('✅ Evidencia subida exitosamente:', evidencia);
+
+        // Construir URL completa para la respuesta
+        const urlCompleta = this.construirUrlCompleta(evidencia.archivo);
+
+        return {
+          ...evidencia,
+          archivo_url: urlCompleta, // URL completa para mostrar
+          archivo_path: evidencia.archivo, // Ruta relativa original
+        };
+      } else {
         const errorText = await response.text();
-        throw new Error(`Error subiendo imagen: ${response.status} - ${errorText}`);
+        console.error('❌ Error subiendo evidencia:', errorText);
+        throw new Error(`Error ${response.status}: ${errorText}`);
       }
 
-      return await response.json();
+    } catch (error) {
+      console.error(`❌ Error en subida directa:`, error);
+      throw new Error(`Subida falló: ${error.message}`);
+    }
+  }
+
+  /**
+   * MÉTODO PRINCIPAL: Subir evidencia con fallback al workaround
+   * Intenta primero la subida directa, si falla usa el workaround
+   */
+  async subirEvidencia(publicacionId: number, evidencia: Evidence): Promise<any> {
+    try {
+      console.log(`🚀 Intentando subida directa primero...`);
+
+      // Intentar subida directa primero
+      return await this.subirEvidenciaDirecta(publicacionId, evidencia);
 
     } catch (error) {
-      console.error('❌ Error subiendo imagen:', error);
+      console.warn(`⚠️ Subida directa falló, usando workaround:`, error.message);
+
+      // Si falla, usar el workaround como fallback
+      return await this.subirEvidenciaWorkaround(publicacionId, evidencia);
+    }
+  }
+
+  /**
+   * Workaround usando imagenes-anuncios (fallback)
+   * Mantener por si el endpoint directo falla
+   */
+  async subirEvidenciaWorkaround(publicacionId: number, evidencia: Evidence): Promise<any> {
+    try {
+      console.log(`🔧 WORKAROUND: Usando imagenes-anuncios como fallback...`);
+
+      const token = await AuthHelper.getToken();
+      if (!token) {
+        throw new Error('No hay token de autenticación');
+      }
+
+      // 1. Crear anuncio temporal
+      const anuncioId = await this.crearAnuncioTemporal(token);
+
+      // 2. Subir imagen via anuncio
+      const imagenSubida = await this.subirImagenViaAnuncio(anuncioId, evidencia, token);
+
+      // 3. Crear evidencia virtual
+      const evidenciaVirtual = {
+        id: `virtual_${Date.now()}`,
+        publicacion: publicacionId,
+        archivo: imagenSubida.imagen, // Ruta relativa
+        archivo_url: this.construirUrlCompleta(imagenSubida.imagen), // URL completa
+        fecha: new Date().toISOString(),
+        extension: this.getFileExtension(evidencia.fileName),
+        workaround: true,
+        status: 'imagen_disponible'
+      };
+
+      // 4. Limpiar anuncio temporal
+      await this.limpiarAnuncioTemporal(anuncioId, token);
+
+      console.log('✅ Workaround completado');
+      return evidenciaVirtual;
+
+    } catch (error) {
+      console.error(`❌ Error en workaround:`, error);
       throw error;
     }
   }
 
   /**
-   * Limpiar anuncio temporal
+   * Subir múltiples evidencias
    */
-  private async limpiarAnuncioTemporal(anuncioId: number, token: string): Promise<void> {
-    try {
-      console.log(`🗑️ Eliminando anuncio temporal ${anuncioId}...`);
-
-      const response = await fetch(`${ACTIVE_CONFIG.baseURL}/anuncios-municipales/${anuncioId}/`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        console.log('✅ Anuncio temporal eliminado');
-      } else {
-        console.warn('⚠️ No se pudo eliminar anuncio temporal (no crítico)');
-      }
-
-    } catch (error) {
-      console.warn('⚠️ Error eliminando anuncio temporal (no crítico):', error);
-    }
-  }
-
-  /**
-   * Construir URL completa de Cloudinary
-   */
-  private construirUrlCompleta(rutaRelativa: string): string {
-    const baseUrl = 'https://res.cloudinary.com/de06451wd/';
-    return baseUrl + rutaRelativa;
-  }
-
-  /**
-   * Obtener extensión del archivo
-   */
-  private getFileExtension(fileName: string): string {
-    const parts = fileName.split('.');
-    return parts.length > 1 ? parts[parts.length - 1] : 'jpg';
-  }
-
-  /**
-   * Subir múltiples evidencias usando workaround
-   */
-  async subirEvidenciasWorkaround(publicacionId: number, evidencias: Evidence[]): Promise<any[]> {
+  async subirEvidencias(publicacionId: number, evidencias: Evidence[]): Promise<any[]> {
     if (!evidencias || evidencias.length === 0) {
-      console.log('📎 No hay evidencias para subir');
       return [];
     }
 
-    console.log(`🔧 Iniciando workaround para ${evidencias.length} evidencias...`);
+    console.log(`📎 Subiendo ${evidencias.length} evidencias...`);
 
     const resultados: any[] = [];
     const errores: string[] = [];
@@ -206,31 +152,115 @@ class EvidenciasWorkaround {
       const evidencia = evidencias[i];
 
       try {
-        console.log(`📎 Workaround ${i + 1}/${evidencias.length}: ${evidencia.fileName}`);
+        console.log(`📎 Subiendo ${i + 1}/${evidencias.length}: ${evidencia.fileName}`);
 
-        const resultado = await this.subirEvidenciaWorkaround(publicacionId, evidencia);
+        const resultado = await this.subirEvidencia(publicacionId, evidencia);
         resultados.push(resultado);
 
         // Pausa entre uploads
         if (i < evidencias.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
 
       } catch (error) {
-        console.error(`❌ Workaround falló para ${evidencia.fileName}:`, error);
+        console.error(`❌ Error subiendo ${evidencia.fileName}:`, error);
         errores.push(`${evidencia.fileName}: ${error.message}`);
       }
     }
 
-    console.log(`✅ Workaround completado: ${resultados.length} exitosas, ${errores.length} errores`);
+    console.log(`✅ Subida completada: ${resultados.length} exitosas, ${errores.length} errores`);
+    return resultados;
+  }
 
-    if (errores.length > 0) {
-      console.warn('⚠️ Errores en workaround:', errores);
+  // ===== MÉTODOS PRIVADOS (para workaround) =====
+
+  private async crearAnuncioTemporal(token: string): Promise<number> {
+    // Obtener usuario actual del token decodificado
+    const userInfo = await AuthHelper.getUserInfoFromToken();
+    const usuarioId = userInfo?.userId || 1; // Fallback
+
+    // Obtener primera categoría
+    const categoriasResponse = await fetch(`${ACTIVE_CONFIG.baseURL}/categorias/`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    const categorias = await categoriasResponse.json();
+    const primeraCategoria = categorias.results?.[0] || categorias[0];
+
+    const anuncioTemporal = {
+      titulo: 'TEMP_EVIDENCIA',
+      subtitulo: 'Anuncio temporal para evidencias',
+      descripcion: 'Se eliminará automáticamente',
+      categoria: primeraCategoria.id,
+      usuario: usuarioId,
+      estado: 'Temporal'
+    };
+
+    const response = await fetch(`${ACTIVE_CONFIG.baseURL}/anuncios-municipales/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(anuncioTemporal),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error creando anuncio temporal: ${response.status}`);
     }
 
-    return resultados;
+    const anuncio = await response.json();
+    return anuncio.id;
+  }
+
+  private async subirImagenViaAnuncio(anuncioId: number, evidencia: Evidence, token: string): Promise<any> {
+    const formData = new FormData();
+
+    formData.append('imagen', {
+      uri: evidencia.uri,
+      type: 'image/jpeg',
+      name: evidencia.fileName,
+    } as any);
+
+    formData.append('anuncio', anuncioId.toString());
+    formData.append('extension', this.getFileExtension(evidencia.fileName));
+
+    const response = await fetch(`${ACTIVE_CONFIG.baseURL}/imagenes-anuncios/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error subiendo imagen: ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  private async limpiarAnuncioTemporal(anuncioId: number, token: string): Promise<void> {
+    try {
+      await fetch(`${ACTIVE_CONFIG.baseURL}/anuncios-municipales/${anuncioId}/`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+    } catch (error) {
+      console.warn('⚠️ No se pudo limpiar anuncio temporal:', error);
+    }
+  }
+
+  private construirUrlCompleta(rutaRelativa: string): string {
+    return `https://res.cloudinary.com/de06451wd/${rutaRelativa}`;
+  }
+
+  private getFileExtension(fileName: string): string {
+    const parts = fileName.split('.');
+    return parts.length > 1 ? parts[parts.length - 1] : 'jpg';
   }
 }
 
-export const evidenciasWorkaround = new EvidenciasWorkaround();
+export const evidenciasService = new EvidenciasWorkaround();
 export default EvidenciasWorkaround;

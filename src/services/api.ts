@@ -1,365 +1,354 @@
-// src/services/api.ts - SERVICIO API ACTUALIZADO PARA CONEXIÓN REAL
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ACTIVE_CONFIG, ENDPOINTS, COMMON_HEADERS, TIMEOUTS, ERROR_MESSAGES } from '../constants/api';
+// src/services/api.ts - Versión Actualizada y Mejorada
+import { ACTIVE_CONFIG } from '../constants/api';
+import AuthHelper from '../utils/authHelper';
 
-interface RequestOptions extends RequestInit {
+// Tipos para las opciones de request
+interface RequestOptions {
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  headers?: Record<string, string>;
+  body?: string | FormData;
   timeout?: number;
-  useAuth?: boolean;
+  retries?: number;
+  cache?: boolean;
+  cacheTTL?: number;
 }
 
-interface CacheItem<T> {
+// Estructura para caché
+interface CacheEntry<T> {
   data: T;
   timestamp: number;
   expiry: number;
 }
 
-class ApiService {
-  private cache = new Map<string, CacheItem<any>>();
-  private defaultTimeout = ACTIVE_CONFIG.timeout;
+class ApiClient {
+  private baseURL: string;
+  private defaultTimeout: number = 10000;
+  private defaultRetries: number = 2;
+  private cache = new Map<string, CacheEntry<any>>();
+  private pendingRequests = new Map<string, Promise<any>>();
 
   constructor() {
-    console.log(`🔧 ApiService inicializado con base URL: ${ACTIVE_CONFIG.baseURL}`);
+    this.baseURL = ACTIVE_CONFIG.baseURL;
+    console.log(`[API] Inicializado con baseURL: ${this.baseURL}`);
   }
 
-  // Obtener token de autenticación
+  // ===== MÉTODOS PRIVADOS =====
+
+  private getCacheKey(url: string, options?: RequestOptions): string {
+    const body = options?.body || '';
+    const method = options?.method || 'GET';
+    return `${url}-${method}-${typeof body === 'string' ? body : 'formdata'}`;
+  }
+
+  private getFromCache<T>(key: string): T | null {
+    const cached = this.cache.get(key);
+    if (!cached) {
+      return null;
+    }
+
+    const now = Date.now();
+    if (now > cached.timestamp + cached.expiry) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    console.log(`[CACHE] Hit: ${key}`);
+    return cached.data;
+  }
+
+  private setCache<T>(key: string, data: T, ttl: number = 5 * 60 * 1000): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      expiry: ttl
+    });
+    console.log(`[CACHE] Guardado: ${key} (TTL: ${ttl}ms)`);
+  }
+
   private async getAuthToken(): Promise<string | null> {
     try {
-      // Primero intentar obtener de AsyncStorage
-      let token = await AsyncStorage.getItem('authToken');
-
-      // Si no hay token en storage, usar el hardcoded temporalmente
-      if (!token) {
-        token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1NTQ0ODkzLCJpYXQiOjE3NTU0NTg0OTMsImp0aSI6ImQ4N2ZmNGFhOWUyYzRiNjBhY2NkOTM4ZDE1ZTM5NjFhIiwicnV0IjoiMjAxMjM5MzAtNSJ9.7aOnsnHXHNoduRqk8CPkYQ-Fk7cDrrjg1iEtbtAv3Cc';
-        console.log('🔑 Usando token hardcoded temporalmente');
-
-        // Opcional: guardarlo en AsyncStorage para futuras peticiones
-        await AsyncStorage.setItem('authToken', token);
-      }
-
-      return token;
+      return await AuthHelper.getToken();
     } catch (error) {
-      console.warn('⚠️ Error obteniendo token:', error);
+      console.warn('[API] Error obteniendo token:', error);
       return null;
     }
   }
 
-  // Crear headers para la petición
-  private async buildHeaders(useAuth: boolean = false): Promise<Record<string, string>> {
-    const headers = { ...COMMON_HEADERS };
-
-    if (useAuth) {
-      const token = await this.getAuthToken();
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-    }
-
-    return headers;
-  }
-
-  // Petición con timeout
   private async requestWithTimeout(url: string, options: RequestOptions = {}): Promise<Response> {
     const timeout = options.timeout || this.defaultTimeout;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      const headers = await this.buildHeaders(options.useAuth);
-
-      console.log(`🚀 Petición: ${options.method || 'GET'} ${url}`);
-
       const response = await fetch(url, {
         ...options,
-        headers: { ...headers, ...options.headers },
         signal: controller.signal,
       });
-
       clearTimeout(timeoutId);
-
-      console.log(`📡 Respuesta: ${response.status} ${response.statusText}`);
-
       return response;
-    } catch (error) {
+    } catch (error: any) {
       clearTimeout(timeoutId);
       if (error.name === 'AbortError') {
-        throw new Error(`⏱️ ${ERROR_MESSAGES.TIMEOUT}`);
+        throw new Error(`Tiempo de espera agotado (${timeout}ms)`);
       }
       throw error;
     }
   }
 
-  // Manejar respuesta de la API
-  private async handleResponse<T>(response: Response): Promise<T> {
-    if (!response.ok) {
-      let errorMessage = ERROR_MESSAGES.UNKNOWN_ERROR;
-      let errorDetails = {};
+  private async requestWithRetry<T>(url: string, options: RequestOptions = {}): Promise<T> {
+    const retries = options.retries !== undefined ? options.retries : this.defaultRetries;
+    let lastError: Error;
 
-      // Intentar obtener detalles del error del servidor
+    for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const errorData = await response.json();
-        console.log('🔍 Error del servidor:', errorData);
+        const response = await this.requestWithTimeout(url, options);
 
-        errorDetails = errorData;
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
 
-        if (errorData.message) {
-          errorMessage = errorData.message;
-        } else if (errorData.detail) {
-          errorMessage = errorData.detail;
-        } else if (errorData.error) {
-          errorMessage = errorData.error;
-        } else if (typeof errorData === 'string') {
-          errorMessage = errorData;
-        } else if (errorData.non_field_errors) {
-          errorMessage = Array.isArray(errorData.non_field_errors)
-            ? errorData.non_field_errors.join(', ')
-            : errorData.non_field_errors;
+        // Intentar parsear JSON, si falla retornar texto
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          return await response.json();
         } else {
-          // Si hay errores de campo, mostrarlos
-          const fieldErrors = [];
-          for (const [field, errors] of Object.entries(errorData)) {
-            if (Array.isArray(errors)) {
-              fieldErrors.push(`${field}: ${errors.join(', ')}`);
-            } else if (typeof errors === 'string') {
-              fieldErrors.push(`${field}: ${errors}`);
-            }
-          }
-          if (fieldErrors.length > 0) {
-            errorMessage = fieldErrors.join('\n');
-          }
+          return await response.text() as any;
         }
-      } catch (parseError) {
-        console.log('⚠️ No se pudo parsear error como JSON, usando texto plano');
-        try {
-          errorMessage = await response.text();
-        } catch {
-          // Usar mensaje por defecto si no se puede obtener nada
+
+      } catch (error: any) {
+        lastError = error;
+
+        if (attempt < retries) {
+          const delay = Math.pow(2, attempt) * 1000; // Backoff exponencial
+          console.log(`[API] Intento ${attempt + 1} falló, reintentando en ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
+    }
 
-      // Mensajes específicos por código de estado
-      switch (response.status) {
-        case 401:
-          errorMessage = ERROR_MESSAGES.UNAUTHORIZED;
-          await AsyncStorage.removeItem('authToken');
-          break;
-        case 403:
-          errorMessage = ERROR_MESSAGES.FORBIDDEN;
-          break;
-        case 404:
-          errorMessage = ERROR_MESSAGES.NOT_FOUND;
-          break;
-        case 408:
-          errorMessage = ERROR_MESSAGES.TIMEOUT;
-          break;
-        case 422:
-          errorMessage = ERROR_MESSAGES.VALIDATION_ERROR + (errorMessage !== ERROR_MESSAGES.UNKNOWN_ERROR ? `\n\n${errorMessage}` : '');
-          break;
-        case 500:
-        case 502:
-        case 503:
-        case 504:
-          errorMessage = ERROR_MESSAGES.SERVER_ERROR;
-          break;
+    throw lastError!;
+  }
+
+  // ===== MÉTODOS PÚBLICOS =====
+
+  async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+    const cacheKey = this.getCacheKey(url, options);
+
+    // Verificar caché para GET requests
+    if ((!options.method || options.method === 'GET') && options.cache !== false) {
+      const cached = this.getFromCache<T>(cacheKey);
+      if (cached) {
+        return cached;
       }
 
-      console.error(`❌ HTTP ${response.status} Error:`, {
-        status: response.status,
-        statusText: response.statusText,
-        errorMessage,
-        errorDetails
-      });
-
-      const error = new Error(errorMessage);
-      (error as any).status = response.status;
-      (error as any).details = errorDetails;
-      throw error;
+      // Verificar si hay request pendiente
+      if (this.pendingRequests.has(cacheKey)) {
+        console.log(`[API] Request pendiente: ${endpoint}`);
+        return this.pendingRequests.get(cacheKey);
+      }
     }
 
-    const data = await response.json();
-    return data;
-  }
-
-  // GET request
-  async get<T>(endpoint: string, useAuth: boolean = false): Promise<T> {
-    const url = `${ACTIVE_CONFIG.baseURL}${endpoint}`;
-
-    try {
-      const response = await this.requestWithTimeout(url, {
-        method: 'GET',
-        useAuth,
-        timeout: TIMEOUTS.GET_LIST,
-      });
-
-      return await this.handleResponse<T>(response);
-    } catch (error) {
-      console.error(`❌ GET Error [${endpoint}]:`, error);
-      throw error;
-    }
-  }
-
-  // POST request
-  async post<T>(endpoint: string, data: any, useAuth: boolean = true): Promise<T> {
-    const url = `${ACTIVE_CONFIG.baseURL}${endpoint}`;
-
-    try {
-      const response = await this.requestWithTimeout(url, {
-        method: 'POST',
-        body: JSON.stringify(data),
-        useAuth,
-        timeout: TIMEOUTS.CREATE,
-      });
-
-      return await this.handleResponse<T>(response);
-    } catch (error) {
-      console.error(`❌ POST Error [${endpoint}]:`, error);
-      throw error;
-    }
-  }
-
-  // PUT request
-  async put<T>(endpoint: string, data: any, useAuth: boolean = true): Promise<T> {
-    const url = `${ACTIVE_CONFIG.baseURL}${endpoint}`;
-
-    try {
-      const response = await this.requestWithTimeout(url, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-        useAuth,
-        timeout: TIMEOUTS.UPDATE,
-      });
-
-      return await this.handleResponse<T>(response);
-    } catch (error) {
-      console.error(`❌ PUT Error [${endpoint}]:`, error);
-      throw error;
-    }
-  }
-
-  // DELETE request
-  async delete<T>(endpoint: string, useAuth: boolean = true): Promise<T> {
-    const url = `${ACTIVE_CONFIG.baseURL}${endpoint}`;
-
-    try {
-      const response = await this.requestWithTimeout(url, {
-        method: 'DELETE',
-        useAuth,
-        timeout: TIMEOUTS.DELETE,
-      });
-
-      return await this.handleResponse<T>(response);
-    } catch (error) {
-      console.error(`❌ DELETE Error [${endpoint}]:`, error);
-      throw error;
-    }
-  }
-
-  // MÉTODOS ESPECÍFICOS PARA TU APP
-
-  // Test de conexión
-  async testHealth(): Promise<any> {
-    return this.get(ENDPOINTS.HEALTH);
-  }
-
-  // Obtener categorías
-  async getCategorias(): Promise<any[]> {
-    return this.get<any[]>(ENDPOINTS.CATEGORIAS);
-  }
-
-  // Obtener departamentos
-  async getDepartamentos(): Promise<any[]> {
-    return this.get<any[]>(ENDPOINTS.DEPARTAMENTOS);
-  }
-
-  // Obtener juntas vecinales
-  async getJuntasVecinales(): Promise<any[]> {
-    return this.get<any[]>(ENDPOINTS.JUNTAS_VECINALES);
-  }
-
-  // Obtener situaciones
-  async getSituaciones(): Promise<any[]> {
-    return this.get<any[]>(ENDPOINTS.SITUACIONES);
-  }
-
-  // Obtener publicaciones
-  async getPublicaciones(page: number = 1, pageSize: number = 10): Promise<any> {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      page_size: pageSize.toString(),
-    });
-
-    return this.get(`${ENDPOINTS.PUBLICACIONES}?${params}`, true);
-  }
-
-  // Crear publicación
-  async crearPublicacion(data: any): Promise<any> {
-    return this.post(ENDPOINTS.PUBLICACIONES, data, true);
-  }
-
-  // Obtener mis publicaciones
-  async getMisPublicaciones(): Promise<any[]> {
-    return this.get<any[]>(ENDPOINTS.MIS_PUBLICACIONES, true);
-  }
-
-  // Login
-  async login(email: string, password: string): Promise<any> {
-    const response = await this.post(ENDPOINTS.AUTH.LOGIN, {
-      email,
-      password,
-    }, false);
-
-    // Guardar token si el login es exitoso
-    if (response.access_token || response.token) {
-      const token = response.access_token || response.token;
-      await AsyncStorage.setItem('authToken', token);
-      console.log('✅ Token guardado exitosamente');
-    }
-
-    return response;
-  }
-
-  // Logout
-  async logout(): Promise<void> {
-    try {
-      await this.post(ENDPOINTS.AUTH.LOGOUT, {}, true);
-    } catch (error) {
-      console.warn('⚠️ Error en logout del servidor:', error);
-    } finally {
-      // Siempre limpiar el token local
-      await AsyncStorage.removeItem('authToken');
-      console.log('🗑️ Token eliminado localmente');
-    }
-  }
-
-  // Obtener perfil del usuario
-  async getProfile(): Promise<any> {
-    return this.get(ENDPOINTS.AUTH.PROFILE, true);
-  }
-
-  // Verificar si hay token válido
-  async hasValidToken(): Promise<boolean> {
+    // Obtener token de autenticación
     const token = await this.getAuthToken();
-    if (!token) return false;
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+    };
+
+    // Solo agregar Content-Type si no es FormData
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const requestOptions: RequestOptions = {
+      ...options,
+      headers: {
+        ...headers,
+        ...options.headers,
+      },
+    };
+
+    const requestPromise = this.requestWithRetry<T>(url, requestOptions);
+
+    // Guardar request pendiente para GET
+    if ((!options.method || options.method === 'GET') && options.cache !== false) {
+      this.pendingRequests.set(cacheKey, requestPromise);
+    }
 
     try {
-      // Intentar obtener el perfil para validar el token
-      await this.getProfile();
+      const result = await requestPromise;
+
+      // Cachear resultado para GET requests
+      if ((!options.method || options.method === 'GET') && options.cache !== false) {
+        const ttl = options.cacheTTL || 5 * 60 * 1000;
+        this.setCache(cacheKey, result, ttl);
+      }
+
+      return result;
+    } catch (error: any) {
+      console.error(`[API] Error en ${endpoint}:`, error.message);
+      throw error;
+    } finally {
+      this.pendingRequests.delete(cacheKey);
+    }
+  }
+
+  async get<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'GET',
+      cache: options.cache !== false,
+      cacheTTL: options.cacheTTL || 5 * 60 * 1000
+    });
+  }
+
+  async post<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+      cache: false,
+    });
+  }
+
+  async put<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+      cache: false,
+    });
+  }
+
+  async patch<T>(endpoint: string, data?: any, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+      cache: false,
+    });
+  }
+
+  async delete<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'DELETE',
+      cache: false,
+    });
+  }
+
+  async postFormData<T>(endpoint: string, formData: FormData, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: formData,
+      timeout: options.timeout || 30000, // 30 segundos para FormData
+      cache: false,
+    });
+  }
+
+  // ===== MÉTODOS DE UTILIDAD =====
+
+  clearCache(): void {
+    this.cache.clear();
+    console.log('[CACHE] Cache limpiado');
+  }
+
+  getCacheSize(): number {
+    return this.cache.size;
+  }
+
+  getCacheInfo(): { size: number; keys: string[] } {
+    return {
+      size: this.cache.size,
+      keys: Array.from(this.cache.keys())
+    };
+  }
+
+  async checkConnection(): Promise<boolean> {
+    try {
+      // Usar endpoint simple para verificar conexión
+      await this.get('/categorias/', {
+        timeout: 5000,
+        cache: false,
+        retries: 0
+      });
       return true;
     } catch (error) {
-      // Si falla, el token no es válido
-      await AsyncStorage.removeItem('authToken');
+      console.warn('[API] Conexión fallida:', error);
       return false;
     }
   }
 
-  // Limpiar cache
-  clearCache(): void {
-    this.cache.clear();
-    console.log('🗑️ Cache limpiado');
+  async preloadCriticalData(): Promise<void> {
+    try {
+      console.log('[API] Precargando datos críticos...');
+
+      const promises = [
+        this.get('/categorias/', { cacheTTL: 30 * 60 * 1000 }),
+        this.get('/departamentos-municipales/', { cacheTTL: 30 * 60 * 1000 }),
+        this.get('/juntas-vecinales/', { cacheTTL: 60 * 60 * 1000 }),
+      ];
+
+      await Promise.allSettled(promises);
+      console.log('[API] Datos críticos precargados');
+    } catch (error) {
+      console.warn('[API] Error precargando datos:', error);
+    }
+  }
+
+  // ===== MÉTODOS DE DEBUG =====
+
+  async debugApiStatus(): Promise<void> {
+    console.log('🔍 === DEBUG API STATUS ===');
+    console.log('🌐 Base URL:', this.baseURL);
+    console.log('📊 Cache size:', this.getCacheSize());
+    console.log('⏱️ Default timeout:', this.defaultTimeout);
+    console.log('🔄 Default retries:', this.defaultRetries);
+
+    // Test de conexión
+    const isConnected = await this.checkConnection();
+    console.log('🔗 Conexión:', isConnected ? '✅ OK' : '❌ FALLA');
+
+    // Estado del token
+    const tokenStatus = await AuthHelper.checkTokenStatus();
+    console.log('🔑 Token válido:', tokenStatus.hasToken && !tokenStatus.isExpired ? '✅ OK' : '❌ PROBLEMA');
+
+    if (tokenStatus.remainingTime) {
+      console.log('⏰ Tiempo restante:', tokenStatus.remainingTime);
+    }
+  }
+
+  /**
+   * Test rápido de endpoints básicos
+   */
+  async testBasicEndpoints(): Promise<{ [key: string]: boolean }> {
+    const endpoints = [
+      '/categorias/',
+      '/departamentos-municipales/',
+      '/publicaciones/',
+    ];
+
+    const results: { [key: string]: boolean } = {};
+
+    for (const endpoint of endpoints) {
+      try {
+        await this.get(endpoint, { timeout: 5000, retries: 0, cache: false });
+        results[endpoint] = true;
+        console.log(`✅ ${endpoint}: OK`);
+      } catch (error) {
+        results[endpoint] = false;
+        console.log(`❌ ${endpoint}: FALLA`);
+      }
+    }
+
+    return results;
   }
 }
 
-// Exportar instancia singleton
-export const apiService = new ApiService();
-
-// También exportar la clase para testing
-export default ApiService;
+export default new ApiClient();

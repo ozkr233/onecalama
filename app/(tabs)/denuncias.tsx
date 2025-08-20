@@ -4,7 +4,7 @@ import { SafeAreaView, Alert, Text, View } from 'react-native';
 import DenunciaForm from '../../src/components/forms/DenunciaForm';
 import { DenunciaFormData } from '../../src/types/denuncias';
 import AppHeader from '../../src/components/layout/AppHeader';
-import { denunciasService } from '../../src/services/DenunciasService';
+import { denunciasService } from '../../src/services/denuncias.ts';
 
 export default function DenunciasScreen() {
   // Estado inicial del formulario

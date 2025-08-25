@@ -35,7 +35,7 @@ export const ENDPOINTS = {
     REGISTER: '/registro/',              // ← v1/registro/
     REFRESH: '/token/refresh/',          // ← v1/token/refresh/
     LOGOUT: '/logout/',                  // Si tienes endpoint de logout
-    PROFILE: '/usuarios/me/',            // Endpoint del perfil de usuario
+    PROFILE: '/usuarios/',            // Endpoint del perfil de usuario
   },
 
   // Datos maestros - NOMBRES EXACTOS DE TU BACKEND

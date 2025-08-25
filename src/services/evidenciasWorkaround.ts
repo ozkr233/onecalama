@@ -1,17 +1,21 @@
-// src/services/evidenciasWorkaround.ts - CON NUEVO SERIALIZER
+// src/services/evidenciasWorkaround.ts - CON NUEVO SERIALIZER (ajustado)
 import { ACTIVE_CONFIG } from '../constants/api';
 import { Evidence } from '../types/denuncias';
 import AuthHelper from '../utils/authHelper';
+import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 
 class EvidenciasWorkaround {
-
   /**
-   * Subir evidencia directamente al endpoint de evidencias
-   * Ahora que el serializer está arreglado, podemos usar el endpoint directo
+   * Subir evidencia directamente al endpoint de evidencias (real, multipart)
+   * Intenta con Expo FileSystem.uploadAsync; si falla, usa fetch + FormData.
    */
   async subirEvidenciaDirecta(publicacionId: number, evidencia: Evidence): Promise<any> {
     try {
-      console.log(`📎 Subiendo evidencia directa: ${evidencia.fileName}`);
+      const fileName = evidencia.fileName ?? 'archivo.jpg';
+      const mime = evidencia.type || this.guessMime(fileName);
+
+      console.log(`📎 Subiendo evidencia directa: ${fileName}`);
       console.log(`📄 Para publicación: ${publicacionId}`);
 
       const token = await AuthHelper.getToken();
@@ -19,82 +23,132 @@ class EvidenciasWorkaround {
         throw new Error('No hay token de autenticación');
       }
 
-      // Crear FormData para el endpoint de evidencias
+      // Asegurar que el archivo sea accesible como file:// (Android content://)
+      const safeUri = await this.ensureFileUri(evidencia.uri, fileName);
+
+      // URL directa del endpoint de evidencias
+      const url = `${ACTIVE_CONFIG.baseURL}/evidencias/`;
+
+      // ====== Intento 1: Expo uploadAsync (mejor para binarios) ======
+      try {
+        const uploadResult = await FileSystem.uploadAsync(url, safeUri, {
+          httpMethod: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            // No agregues Content-Type aquí; uploadAsync lo maneja con boundary
+            Accept: 'application/json',
+          },
+          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          fieldName: 'archivo', // nombre de campo que tu DRF espera
+          parameters: {
+            publicacion_id: String(publicacionId),
+            extension: this.getFileExtension(fileName),
+            fecha: new Date().toISOString(),
+          },
+          mimeType: mime,
+          // Nota: RN/Expo infiere el nombre; si tu backend exige filename exacto,
+          // puedes pasar "name" pero no está tipado en TS de Expo:
+          // @ts-ignore
+          name: fileName,
+        });
+
+        const status = uploadResult.status;
+        const text = uploadResult.body ?? '';
+        let data: any = text;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          /* cuerpo no JSON */
+        }
+
+        console.log(`📡 Respuesta evidencias (uploadAsync): ${status}`);
+
+        if (status < 200 || status >= 300) {
+          throw new Error(
+            `Error ${status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`
+          );
+        }
+
+        const evidenciaResp = data;
+        const urlCompleta = this.construirUrlCompleta(evidenciaResp.archivo);
+
+        console.log('✅ Evidencia subida exitosamente (uploadAsync):', evidenciaResp);
+
+        return {
+          ...evidenciaResp,
+          archivo_url: urlCompleta,
+          archivo_path: evidenciaResp.archivo,
+        };
+      } catch (err1: any) {
+        console.warn('⚠️ uploadAsync falló, probando fetch como fallback:', err1?.message ?? err1);
+      }
+
+      // ====== Intento 2: fetch + FormData ======
       const formData = new FormData();
-
-      formData.append('archivo', {
-        uri: evidencia.uri,
-        type: 'image/jpeg',
-        name: evidencia.fileName,
+      formData.append('archivo' as any, {
+        uri: safeUri,
+        name: fileName,
+        type: mime,
       } as any);
-
-      formData.append('publicacion_id', publicacionId.toString());
-      formData.append('extension', this.getFileExtension(evidencia.fileName));
+      formData.append('publicacion_id', String(publicacionId));
+      formData.append('extension', this.getFileExtension(fileName));
       formData.append('fecha', new Date().toISOString());
 
-      console.log('📤 FormData para evidencias:');
-      console.log(`   archivo: ${evidencia.fileName}`);
-      console.log(`   publicacion_id: ${publicacionId}`);
-      console.log(`   extension: ${this.getFileExtension(evidencia.fileName)}`);
-
-      const response = await fetch(`${ACTIVE_CONFIG.baseURL}/evidencias/`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-          'Accept': 'application/json',
+          Authorization: `Bearer ${token}`,
+          // NO seteamos 'Content-Type': RN define el boundary automáticamente
+          Accept: 'application/json',
         },
         body: formData,
       });
 
-      console.log(`📡 Respuesta evidencias: ${response.status} ${response.statusText}`);
+      console.log(`📡 Respuesta evidencias (fetch): ${response.status} ${response.statusText}`);
 
-      if (response.ok) {
-        const evidencia = await response.json();
-        console.log('✅ Evidencia subida exitosamente:', evidencia);
-
-        // Construir URL completa para la respuesta
-        const urlCompleta = this.construirUrlCompleta(evidencia.archivo);
-
-        return {
-          ...evidencia,
-          archivo_url: urlCompleta, // URL completa para mostrar
-          archivo_path: evidencia.archivo, // Ruta relativa original
-        };
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Error subiendo evidencia:', errorText);
-        throw new Error(`Error ${response.status}: ${errorText}`);
+      const text = await response.text();
+      let data: any = text;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        /* cuerpo no JSON */
       }
 
-    } catch (error) {
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
+      }
+
+      const evidenciaResp = data;
+      const urlCompleta = this.construirUrlCompleta(evidenciaResp.archivo);
+
+      console.log('✅ Evidencia subida exitosamente (fetch):', evidenciaResp);
+
+      return {
+        ...evidenciaResp,
+        archivo_url: urlCompleta,
+        archivo_path: evidenciaResp.archivo,
+      };
+    } catch (error: any) {
       console.error(`❌ Error en subida directa:`, error);
-      throw new Error(`Subida falló: ${error.message}`);
+      throw new Error(`Subida falló: ${error?.message ?? String(error)}`);
     }
   }
 
   /**
-   * MÉTODO PRINCIPAL: Subir evidencia con fallback al workaround
-   * Intenta primero la subida directa, si falla usa el workaround
+   * MÉTODO PRINCIPAL: Intenta directa, si falla usa workaround
    */
   async subirEvidencia(publicacionId: number, evidencia: Evidence): Promise<any> {
     try {
       console.log(`🚀 Intentando subida directa primero...`);
-
-      // Intentar subida directa primero
       return await this.subirEvidenciaDirecta(publicacionId, evidencia);
-
-    } catch (error) {
-      console.warn(`⚠️ Subida directa falló, usando workaround:`, error.message);
-
-      // Si falla, usar el workaround como fallback
+    } catch (error: any) {
+      console.warn(`⚠️ Subida directa falló, usando workaround:`, error?.message ?? String(error));
       return await this.subirEvidenciaWorkaround(publicacionId, evidencia);
     }
   }
 
   /**
    * Workaround usando imagenes-anuncios (fallback)
-   * Mantener por si el endpoint directo falla
    */
   async subirEvidenciaWorkaround(publicacionId: number, evidencia: Evidence): Promise<any> {
     try {
@@ -105,30 +159,29 @@ class EvidenciasWorkaround {
         throw new Error('No hay token de autenticación');
       }
 
-      // 1. Crear anuncio temporal
+      // 1) Crear anuncio temporal
       const anuncioId = await this.crearAnuncioTemporal(token);
 
-      // 2. Subir imagen via anuncio
+      // 2) Subir imagen vía anuncio
       const imagenSubida = await this.subirImagenViaAnuncio(anuncioId, evidencia, token);
 
-      // 3. Crear evidencia virtual
+      // 3) Crear evidencia "virtual" coherente con tu modelo
       const evidenciaVirtual = {
         id: `virtual_${Date.now()}`,
         publicacion: publicacionId,
         archivo: imagenSubida.imagen, // Ruta relativa
         archivo_url: this.construirUrlCompleta(imagenSubida.imagen), // URL completa
         fecha: new Date().toISOString(),
-        extension: this.getFileExtension(evidencia.fileName),
+        extension: this.getFileExtension(evidencia.fileName ?? 'jpg'),
         workaround: true,
-        status: 'imagen_disponible'
+        status: 'imagen_disponible',
       };
 
-      // 4. Limpiar anuncio temporal
+      // 4) Limpiar anuncio temporal
       await this.limpiarAnuncioTemporal(anuncioId, token);
 
       console.log('✅ Workaround completado');
       return evidenciaVirtual;
-
     } catch (error) {
       console.error(`❌ Error en workaround:`, error);
       throw error;
@@ -136,12 +189,10 @@ class EvidenciasWorkaround {
   }
 
   /**
-   * Subir múltiples evidencias
+   * Subir múltiples evidencias en serie
    */
   async subirEvidencias(publicacionId: number, evidencias: Evidence[]): Promise<any[]> {
-    if (!evidencias || evidencias.length === 0) {
-      return [];
-    }
+    if (!evidencias || evidencias.length === 0) return [];
 
     console.log(`📎 Subiendo ${evidencias.length} evidencias...`);
 
@@ -150,21 +201,18 @@ class EvidenciasWorkaround {
 
     for (let i = 0; i < evidencias.length; i++) {
       const evidencia = evidencias[i];
-
       try {
         console.log(`📎 Subiendo ${i + 1}/${evidencias.length}: ${evidencia.fileName}`);
-
         const resultado = await this.subirEvidencia(publicacionId, evidencia);
         resultados.push(resultado);
 
-        // Pausa entre uploads
+        // Pequeña pausa para evitar saturar
         if (i < evidencias.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise((r) => setTimeout(r, 300));
         }
-
-      } catch (error) {
+      } catch (error: any) {
         console.error(`❌ Error subiendo ${evidencia.fileName}:`, error);
-        errores.push(`${evidencia.fileName}: ${error.message}`);
+        errores.push(`${evidencia.fileName}: ${error?.message ?? String(error)}`);
       }
     }
 
@@ -172,18 +220,16 @@ class EvidenciasWorkaround {
     return resultados;
   }
 
-  // ===== MÉTODOS PRIVADOS (para workaround) =====
+  // ===== MÉTODOS PRIVADOS =====
 
   private async crearAnuncioTemporal(token: string): Promise<number> {
-    // Obtener usuario actual del token decodificado
     const userInfo = await AuthHelper.getUserInfoFromToken();
-    const usuarioId = userInfo?.userId || 1; // Fallback
+    const usuarioId = userInfo?.userId || 1;
 
     // Obtener primera categoría
     const categoriasResponse = await fetch(`${ACTIVE_CONFIG.baseURL}/categorias/`, {
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
-
     const categorias = await categoriasResponse.json();
     const primeraCategoria = categorias.results?.[0] || categorias[0];
 
@@ -191,22 +237,23 @@ class EvidenciasWorkaround {
       titulo: 'TEMP_EVIDENCIA',
       subtitulo: 'Anuncio temporal para evidencias',
       descripcion: 'Se eliminará automáticamente',
-      categoria: primeraCategoria.id,
+      categoria: primeraCategoria?.id ?? 1,
       usuario: usuarioId,
-      estado: 'Temporal'
+      estado: 'Temporal',
     };
 
     const response = await fetch(`${ACTIVE_CONFIG.baseURL}/anuncios-municipales/`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(anuncioTemporal),
     });
 
     if (!response.ok) {
-      throw new Error(`Error creando anuncio temporal: ${response.status}`);
+      const txt = await response.text();
+      throw new Error(`Error creando anuncio temporal: ${response.status} ${txt}`);
     }
 
     const anuncio = await response.json();
@@ -214,28 +261,32 @@ class EvidenciasWorkaround {
   }
 
   private async subirImagenViaAnuncio(anuncioId: number, evidencia: Evidence, token: string): Promise<any> {
+    const fileName = evidencia.fileName ?? 'archivo.jpg';
+    const mime = evidencia.type || this.guessMime(fileName);
+
+    const safeUri = await this.ensureFileUri(evidencia.uri, fileName);
+
     const formData = new FormData();
-
-    formData.append('imagen', {
-      uri: evidencia.uri,
-      type: 'image/jpeg',
-      name: evidencia.fileName,
+    formData.append('imagen' as any, {
+      uri: safeUri,
+      type: mime,
+      name: fileName,
     } as any);
-
-    formData.append('anuncio', anuncioId.toString());
-    formData.append('extension', this.getFileExtension(evidencia.fileName));
+    formData.append('anuncio', String(anuncioId));
+    formData.append('extension', this.getFileExtension(fileName));
 
     const response = await fetch(`${ACTIVE_CONFIG.baseURL}/imagenes-anuncios/`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${token}`,
+        // NO 'Content-Type' aquí
       },
       body: formData,
     });
 
     if (!response.ok) {
-      throw new Error(`Error subiendo imagen: ${response.status}`);
+      const txt = await response.text();
+      throw new Error(`Error subiendo imagen: ${response.status} ${txt}`);
     }
 
     return await response.json();
@@ -245,22 +296,81 @@ class EvidenciasWorkaround {
     try {
       await fetch(`${ACTIVE_CONFIG.baseURL}/anuncios-municipales/${anuncioId}/`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
     } catch (error) {
       console.warn('⚠️ No se pudo limpiar anuncio temporal:', error);
     }
   }
 
+  /**
+   * Si ya es URL absoluta, la devuelve; si no, construye absoluta.
+   * Ajusta aquí si tus archivos no están en Cloudinary.
+   */
   private construirUrlCompleta(rutaRelativa: string): string {
+    if (!rutaRelativa) return '';
+    if (/^https?:\/\//i.test(rutaRelativa)) return rutaRelativa;
+    // Tu versión original apuntaba a Cloudinary:
     return `https://res.cloudinary.com/de06451wd/${rutaRelativa}`;
+    // Si tus archivos viven en tu backend:
+    // return `${ACTIVE_CONFIG.baseURL}${rutaRelativa.startsWith('/') ? '' : '/'}${rutaRelativa}`;
   }
 
   private getFileExtension(fileName: string): string {
-    const parts = fileName.split('.');
-    return parts.length > 1 ? parts[parts.length - 1] : 'jpg';
+    const parts = (fileName || '').split('.');
+    return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : 'jpg';
+  }
+
+  private guessMime(fileName: string): string {
+    const ext = this.getFileExtension(fileName);
+    switch (ext) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
+      case 'heic':
+        return 'image/heic';
+      case 'mp4':
+        return 'video/mp4';
+      case 'mov':
+        return 'video/quicktime';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  /**
+   * Asegura que la URI sea file:// (necesario para upload en Android)
+   */
+  private async ensureFileUri(inputUri: string, fileName: string): Promise<string> {
+    if (!inputUri) throw new Error('URI de archivo inválida');
+    if (inputUri.startsWith('file://')) return inputUri;
+
+    // Copia content:// a cache como file://
+    const ext = this.getFileExtension(fileName) || 'bin';
+    const dest = `${FileSystem.cacheDirectory}${Date.now()}.${ext}`;
+
+    try {
+      const info = await FileSystem.getInfoAsync(inputUri);
+      if (info.exists) {
+        await FileSystem.copyAsync({ from: inputUri, to: dest });
+        return dest;
+      }
+    } catch {
+      // Ignoramos y usamos fallback
+    }
+
+    // Fallback: leer como base64 y reescribir (puede fallar si la URI está protegida)
+    const base64 = await FileSystem.readAsStringAsync(inputUri, { encoding: FileSystem.EncodingType.Base64 });
+    await FileSystem.writeAsStringAsync(dest, base64, { encoding: FileSystem.EncodingType.Base64 });
+    return dest;
   }
 }
 
 export const evidenciasService = new EvidenciasWorkaround();
+// Alias extra por compatibilidad (algunos módulos esperan este nombre)
+export const evidenciasWorkaround = evidenciasService;
 export default EvidenciasWorkaround;

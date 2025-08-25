@@ -2,14 +2,22 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../src/hooks/useAuth';
 
 export default function TabLayout() {
+  const { user, isAuthenticated } = useAuth();
+
+  // Si no está autenticado, no mostrar nada (el root layout debería redirigir)
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#E67E22',
         tabBarInactiveTintColor: '#757575',
-        headerShown: false, // Ocultar header del tab navigator
+        headerShown: false, // Mantenemos oculto porque usas AppHeader
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopColor: '#E0E0E0',
@@ -79,7 +87,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
     </Tabs>
   );
 }

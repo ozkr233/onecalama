@@ -172,7 +172,6 @@ export default function AnuncioCard({ anuncio }: AnuncioCardProps) {
             color="$primary"
             pressStyle={{
               bg: "$primary",
-              color: "white"
             }}
           >
             <XStack ai="center" gap="$1">

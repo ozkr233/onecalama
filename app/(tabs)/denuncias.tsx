@@ -4,7 +4,7 @@ import { SafeAreaView, Alert, Text, View } from 'react-native';
 import DenunciaForm from '../../src/components/forms/DenunciaForm';
 import { DenunciaFormData } from '../../src/types/denuncias';
 import AppHeader from '../../src/components/layout/AppHeader';
-import { denunciasService } from '../../src/services/denuncias.ts';
+import { denunciasService } from '../../src/services/denuncias';
 
 export default function DenunciasScreen() {
   // Estado inicial del formulario
@@ -226,12 +226,11 @@ export default function DenunciasScreen() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <AppHeader
-        title="Nueva Denuncia"
-        subtitle={
-          connectionError ? '⚠️ Modo Offline' :
-          isAuthenticated ? '🌐 Conectado a Django' : '❌ Sin Autenticación'
-        }
-      />
+        screenTitle="Nueva Denuncia"
+        screenSubtitle="Reporta un problema en tu comuna"
+        screenIcon="document-outline"
+          showAppInfo={false}
+        />
 
       <DenunciaForm
         formData={formData}

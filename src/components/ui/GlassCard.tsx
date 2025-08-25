@@ -65,9 +65,9 @@ const StyledGlassContainer = styled(YStack, {
           y: -2,
         },
         animation: 'quick',
-      }
+      },
     }
-  }
+  } as const
 });
 
 export default function GlassCard({

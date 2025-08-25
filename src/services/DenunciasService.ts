@@ -242,10 +242,10 @@ class DenunciasService {
         nombre_calle: formData.direccion || 'Sin especificar',
         numero_calle: 0, // Default, puedes extraer del address si es necesario
         // CORREGIDO: Reducir precisión de coordenadas (máximo 9 dígitos)
-        latitud: formData.ubicacion?.latitude ?
-          parseFloat(formData.ubicacion.latitude.toFixed(6)) : -22.456900, // 6 decimales = 8 dígitos totales
-        longitud: formData.ubicacion?.longitude ?
-          parseFloat(formData.ubicacion.longitude.toFixed(6)) : -68.931700, // 6 decimales = 8 dígitos totales
+        latitud: formData.ubicacion?.latitud ?
+          parseFloat(formData.ubicacion.latitud.toFixed(6)) : -22.456900, // 6 decimales = 8 dígitos totales
+        longitud: formData.ubicacion?.longitud ?
+          parseFloat(formData.ubicacion.longitud.toFixed(6)) : -68.931700, // 6 decimales = 8 dígitos totales
         junta_vecinal: 1, // Usar la primera junta vecinal como default por ahora
         // NUEVO: Agregar usuario (obtenido del token JWT)
         usuario: await UserHelper.getCurrentUserId(),

@@ -34,7 +34,12 @@ interface UseAnunciosAvanzadoReturn {
 
 export const useAnunciosAvanzado = (): UseAnunciosAvanzadoReturn => {
   const [anuncios, setAnuncios] = useState<AnuncioMunicipal[]>([]);
-  const [estadisticas, setEstadisticas] = useState(null);
+  const [estadisticas, setEstadisticas] = useState<{
+    total: number;
+    activos: number;
+    programados: number;
+    finalizados: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

@@ -58,7 +58,7 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
         <YStack gap="$2">
           <XStack jc="space-between" ai="center">
             <Text fontSize="$4" fontWeight="bold" color="$textPrimary">
-              Descripción Detallada
+              Descripción del Problema
             </Text>
             <XStack ai="center" gap="$2">
               <Text fontSize="$3" color="$textSecondary">

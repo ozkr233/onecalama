@@ -105,11 +105,12 @@ export const validateRegisterForm = (form: RegisterForm): FormErrors => {
   }
 
   // Validar teléfono
-  if (!form.numero_telefonico_movil.trim()) {
-    errors.numero_telefonico_movil = 'Debes ingresar tu número de teléfono';
-  } else if (!validatePhone(form.numero_telefonico_movil)) {
+const tel = form.numero_telefonico_movil.replace(/\s/g, '').trim();
+if (tel) {
+  if (!validatePhone(tel)) {
     errors.numero_telefonico_movil = 'Debe tener entre 8 y 9 dígitos';
   }
+}
 
   // Validar contraseña
   if (!form.password.trim()) {

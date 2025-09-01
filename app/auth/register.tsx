@@ -1,5 +1,5 @@
 // app/auth/register.tsx - Pantalla principal de registro
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import { SafeAreaView, Alert, ScrollView, Pressable } from 'react-native';
 import { Text, YStack, XStack, H2, Card } from 'tamagui';
@@ -19,15 +19,21 @@ import {
   FormErrors,
   formatRUT,
   validateRegisterForm,
-  getCompletedFields,
-  getFieldsWithContent,
-  getFieldStatuses,
-  FORM_FIELDS
+  getFieldStatuses, // <-- usamos solo este helper para el estado visual
 } from '../../src/utils/registerValidation';
+
+// Campos REQUERIDOS (teléfono queda fuera)  <-- NUEVO
+const REQUIRED_FIELDS: (keyof RegisterForm)[] = [
+  'rut',
+  'nombre',
+  'email',
+  'password',
+  'confirmPassword',
+];
 
 export default function RegisterScreen() {
   const { register, isLoading } = useAuth();
-  
+
   // Estados del formulario
   const [form, setForm] = useState<RegisterForm>({
     rut: '',
@@ -43,7 +49,7 @@ export default function RegisterScreen() {
   // Actualizar campo del formulario con validación en tiempo real
   const updateField = (field: keyof RegisterForm) => (value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
-    
+
     // Limpiar error cuando el usuario empiece a escribir
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -52,9 +58,10 @@ export default function RegisterScreen() {
 
   // Validar campo individual cuando pierde el foco
   const validateSingleField = (field: keyof RegisterForm, value: string) => {
+    // Reutilizamos tu validador global (ya modificado para teléfono opcional)
     const tempForm = { ...form, [field]: value };
     const allErrors = validateRegisterForm(tempForm);
-    
+
     if (allErrors[field]) {
       setErrors(prev => ({ ...prev, [field]: allErrors[field] }));
     } else {
@@ -68,12 +75,29 @@ export default function RegisterScreen() {
     updateField('rut')(formatted);
   };
 
-  // Validar formulario
+  // Validar formulario (submit)
   const validateForm = (): boolean => {
-    const newErrors = validateRegisterForm(form);
+    const newErrors = validateRegisterForm(form); // <-- teléfono no exigido si está vacío
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  // Derivados para progreso y botón de registro  <-- NUEVO
+  const currentErrors = useMemo(() => validateRegisterForm(form), [form]); // usa validador con teléfono opcional
+  const totalRequiredFields = REQUIRED_FIELDS.length;
+  const completedRequiredFields = useMemo(
+    () => REQUIRED_FIELDS.filter(k => form[k]?.trim() && !currentErrors[k]).length,
+    [form, currentErrors]
+  );
+  const hasAllRequiredFilled = useMemo(
+    () => REQUIRED_FIELDS.every(k => form[k]?.trim()),
+    [form]
+  );
+  const isFormValid = hasAllRequiredFilled && Object.keys(currentErrors).length === 0; // <-- sin depender del teléfono
+  const hasErrors = Object.keys(errors).length > 0;
+
+  // Estados por campo para el progreso visual (usa tus helpers existentes)
+  const fieldStatuses = getFieldStatuses(form, errors);
 
   // Registrar usuario
   const handleRegister = async () => {
@@ -84,36 +108,36 @@ export default function RegisterScreen() {
 
     try {
       console.log('📝 Registrando nuevo usuario...');
-      
+
       const userData = {
         rut: form.rut.trim(),
         nombre: form.nombre.trim(),
         email: form.email.trim().toLowerCase(),
-        numero_telefonico_movil: form.numero_telefonico_movil.trim(),
+        numero_telefonico_movil: form.numero_telefonico_movil.trim(), // puede ir vacío
         password: form.password,
       };
-      
+
       const result = await register(userData);
-      
+
       if (result.success) {
         console.log('✅ Usuario registrado exitosamente');
-        
+
         Alert.alert(
           '🎉 ¡Bienvenido a OneCalama!',
           'Tu cuenta ha sido creada correctamente. Ahora puedes iniciar sesión.',
           [
             {
               text: 'Continuar',
-              onPress: () => router.push('/auth/login')
-            }
+              onPress: () => router.push('/auth/login'),
+            },
           ]
         );
       } else {
-        throw new Error(result.message || 'Error en el registro');
+        throw new Error(result.error || 'Error en el registro');
       }
     } catch (error: any) {
       console.error('❌ Error en registro:', error);
-      
+
       Alert.alert(
         'Error en el Registro',
         error.message || 'No se pudo crear tu cuenta. Intenta nuevamente.',
@@ -122,16 +146,9 @@ export default function RegisterScreen() {
     }
   };
 
-  // Calcular progreso usando los errores actuales del estado
-  const completedFields = getCompletedFields(form, errors); // Usa errores actuales
-  const fieldsWithContent = getFieldsWithContent(form);
-  const fieldStatuses = getFieldStatuses(form, errors); // Usa errores actuales
-  const isFormValid = Object.keys(validateRegisterForm(form)).length === 0 && completedFields.length === 6;
-  const hasErrors = Object.keys(errors).length > 0;
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={{ padding: 20 }}
         showsVerticalScrollIndicator={false}
       >
@@ -141,7 +158,7 @@ export default function RegisterScreen() {
             <Pressable onPress={() => router.push('/auth/login')}>
               <Ionicons name="arrow-back" size={28} color="#009688" />
             </Pressable>
-            
+
             <YStack flex={1} alignItems="center">
               <H2 color="$secondary" fontWeight="bold">
                 Crear Cuenta
@@ -151,7 +168,7 @@ export default function RegisterScreen() {
               </Text>
             </YStack>
           </XStack>
-          
+
           {/* Icono principal */}
           <YStack alignItems="center">
             <YStack
@@ -175,8 +192,8 @@ export default function RegisterScreen() {
 
           {/* Progreso del formulario */}
           <FormProgress
-            completedFields={completedFields.length}
-            totalFields={6}
+            completedFields={completedRequiredFields} // <-- solo requeridos
+            totalFields={totalRequiredFields}        // <-- evita "5" hardcodeado
             hasErrors={hasErrors}
             fieldStatuses={fieldStatuses}
           />
@@ -187,7 +204,7 @@ export default function RegisterScreen() {
               <Text fontSize="$5" fontWeight="bold" color="$textPrimary">
                 📝 Información Personal
               </Text>
-              
+
               <FormInput
                 label="RUT"
                 value={form.rut}
@@ -223,18 +240,35 @@ export default function RegisterScreen() {
                 required
               />
 
+              {/* Teléfono opcional */}
               <FormInput
-                label="Teléfono Móvil"
+                label="Teléfono Móvil (opcional)" // <-- etiqueta clara
                 value={form.numero_telefonico_movil}
                 onChangeText={updateField('numero_telefonico_movil')}
-                onBlur={() => validateSingleField('numero_telefonico_movil', form.numero_telefonico_movil)}
+                onBlur={() => {
+                  if (form.numero_telefonico_movil.trim()) {
+                    // <-- valida solo si hay contenido
+                    validateSingleField(
+                      'numero_telefonico_movil',
+                      form.numero_telefonico_movil
+                    );
+                  } else {
+                    // limpia error si lo borra
+                    if (errors.numero_telefonico_movil) {
+                      setErrors(prev => ({
+                        ...prev,
+                        numero_telefonico_movil: '',
+                      }));
+                    }
+                  }
+                }}
                 placeholder="9 8765 4321"
                 error={errors.numero_telefonico_movil}
                 icon="call"
                 keyboardType="phone-pad"
                 maxLength={9}
-                showPhonePrefix={true}
-                required
+                showPhonePrefix
+                required={false} // <-- explícito, aunque no controla la lógica
               />
 
               <FormInput
@@ -253,7 +287,9 @@ export default function RegisterScreen() {
                 label="Confirmar Contraseña"
                 value={form.confirmPassword}
                 onChangeText={updateField('confirmPassword')}
-                onBlur={() => validateSingleField('confirmPassword', form.confirmPassword)}
+                onBlur={() =>
+                  validateSingleField('confirmPassword', form.confirmPassword)
+                }
                 placeholder="Repite tu contraseña"
                 error={errors.confirmPassword}
                 icon="lock-closed"
@@ -264,20 +300,16 @@ export default function RegisterScreen() {
           </Card>
 
           {/* Botón de registro */}
-          <RegisterButton
-            isValid={isFormValid}
-            loading={isLoading}
-            onPress={handleRegister}
-          />
+          <RegisterButton isValid={isFormValid} loading={isLoading} onPress={handleRegister} />
 
           {/* Links de navegación */}
           <YStack alignItems="center" gap="$3">
             <YStack height={1} bg="$gray6" width="100%" />
-            
+
             <Text fontSize="$4" color="$textSecondary">
               ¿Ya tienes una cuenta?
             </Text>
-            
+
             <Pressable onPress={() => router.push('/auth/login')}>
               <Text fontSize="$4" color="$secondary" fontWeight="bold">
                 Iniciar Sesión
@@ -286,10 +318,10 @@ export default function RegisterScreen() {
           </YStack>
 
           {/* Información de seguridad */}
-          <Card 
-            bg="rgba(0, 150, 136, 0.08)" 
-            borderColor="$secondary" 
-            borderWidth={1} 
+          <Card
+            bg="rgba(0, 150, 136, 0.08)"
+            borderColor="$secondary"
+            borderWidth={1}
             p="$4"
           >
             <XStack alignItems="center" gap="$3">

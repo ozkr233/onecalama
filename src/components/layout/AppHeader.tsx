@@ -143,14 +143,9 @@ export default function AppHeader({
                   {user && (
                     <Text
                       color="rgba(255,255,255,0.9)"
-                      fontSize="$3"
-                      style={{
-                        textShadowColor: 'rgba(0,0,0,0.2)',
-                        textShadowOffset: { width: 1, height: 1 },
-                        textShadowRadius: 1,
-                      }}
+                      fontSize="$4"
                     >
-                      Hola, <UserDisplay variant="first-name" color="rgba(255,255,255,0.9)" />
+                      Hola, <UserDisplay variant="first-name" color="rgba(255,255,255,0.9) "  />
                     </Text>
                   )}
                 </YStack>

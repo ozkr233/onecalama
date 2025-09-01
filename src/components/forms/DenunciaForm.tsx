@@ -5,14 +5,12 @@ import { Text, YStack, XStack, Button, Card, H4 } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { DenunciaFormData, LocationData } from '../../types';
 
-// Componentes refactorizados
 import BasicInfoSection from './BasicInfoSection';
 import AIAssistantSection from './AIAssistantSection';
 import FormProgressCard from './FormProgressCard';
 import SubmitButton from './SubmitButton';
 import EvidenceSection from './EvidenceSection';
 
-// Componentes existentes
 import Selector from './Selector';
 import MapSelector from './MapSelector';
 import UbicacionSection from './UbicacionSection';
@@ -96,10 +94,15 @@ const DenunciaForm: React.FC<DenunciaFormProps> = ({
     onFormDataChange({ ...formData, [field]: value });
   };
 
-  const handleLocationSelect = (location: LocationData) => {
+  const handleLocationSelect = (location: { latitude: number; longitude: number; address?: string }) => {
+    const locationData: LocationData = {
+      latitud: location.latitude,
+      longitud: location.longitude,
+      address: location.address
+    };
     onFormDataChange({
       ...formData,
-      ubicacion: location,
+      ubicacion: locationData,
       direccion: location.address || formData.direccion
     });
     setIsMapVisible(false);
@@ -164,7 +167,7 @@ const DenunciaForm: React.FC<DenunciaFormProps> = ({
               )}
             </YStack>
 
-            {/* Departamento - Ahora de solo lectura */}
+            {/* Departamento -*/}
             <YStack gap="$2">
               <Text fontSize="$4" fontWeight="bold" color="$textPrimary">
                 Departamento Municipal
@@ -283,7 +286,7 @@ const DenunciaForm: React.FC<DenunciaFormProps> = ({
           <MapSelector
             onLocationSelect={handleLocationSelect}
             onClose={() => setIsMapVisible(false)}
-            initialLocation={formData.ubicacion}
+            initialLocation={formData.ubicacion ? { latitude: formData.ubicacion.latitud, longitude: formData.ubicacion.longitud } : undefined}
           />
         </Modal>
       </YStack>

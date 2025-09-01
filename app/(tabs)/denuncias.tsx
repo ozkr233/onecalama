@@ -210,7 +210,7 @@ export default function DenunciasScreen() {
   if (loadingInitial) {
     return (
       <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
-        <AppHeader title="Nueva Denuncia" />
+        <AppHeader screenTitle="Nueva Denuncia" />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <Text style={{ fontSize: 18, color: '#3B82F6', marginBottom: 10 }}>
             🔄 Conectando con Django...

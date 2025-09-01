@@ -1,14 +1,126 @@
-// app/(tabs)/anuncios.tsx
-import React from 'react';
+// app/(tabs)/anuncios.tsx - VERSIÓN MEJORADA CON BACKEND
+import React, { useState } from 'react';
 import { Text, YStack, XStack, Button, Card, Spinner } from 'tamagui';
-import { SafeAreaView, ScrollView, RefreshControl } from 'react-native';
+import { SafeAreaView, ScrollView, RefreshControl, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AppHeader from '../../src/components/layout/AppHeader';
 import AnuncioCard from '../../src/components/ui/AnuncioCard';
+import { Badge } from '../../src/components/ui/Badge';
 import { useAnuncios } from '../../src/hooks/useAnuncios';
 
 export default function AnunciosScreen() {
-  const { anuncios, loading, error, refetch } = useAnuncios();
+  const { 
+    anuncios, 
+    loading, 
+    error, 
+    isConnected,
+    connectionStatus,
+    statistics,
+    refetch,
+    testConnection
+  } = useAnuncios();
+  
+  const [testingConnection, setTestingConnection] = useState(false);
+
+  // Función para manejar test de conexión manual
+  const handleTestConnection = async () => {
+    setTestingConnection(true);
+    try {
+      const result = await testConnection();
+      Alert.alert(
+        result ? '✅ Conexión Exitosa' : '❌ Sin Conexión',
+        result 
+          ? 'La conexión con el servidor funciona correctamente'
+          : 'No se pudo conectar con el servidor. Verifica tu internet.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
+  // Componente de estado de conexión
+  const ConnectionStatus = () => (
+    <Card
+      bg={isConnected ? "$green2" : "$orange2"}
+      p="$3"
+      br="$3"
+      mb="$3"
+      borderWidth={1}
+      borderColor={isConnected ? "$green7" : "$orange7"}
+    >
+      <XStack ai="center" jc="space-between">
+        <XStack ai="center" gap="$2">
+          <Ionicons
+            name={isConnected ? 'checkmark-circle' : 'warning'}
+            size={20}
+            color={isConnected ? '#22C55E' : '#F59E0B'}
+          />
+          <YStack>
+            <Text fontSize="$3" fontWeight="bold" color="$textPrimary">
+              {connectionStatus === 'online' ? 'Conectado' : 
+               connectionStatus === 'offline' ? 'Sin conexión' : 'Verificando...'}
+            </Text>
+            <Text fontSize="$2" color="$textSecondary">
+              {isConnected 
+                ? 'Datos actualizados desde el servidor'
+                : 'Usando datos locales de respaldo'
+              }
+            </Text>
+          </YStack>
+        </XStack>
+
+        <Button
+          size="$2"
+          variant="outlined"
+          borderColor={isConnected ? "$green7" : "$orange7"}
+          color={isConnected ? "$green9" : "$orange9"}
+          onPress={handleTestConnection}
+          disabled={testingConnection || connectionStatus === 'testing'}
+        >
+          {testingConnection ? (
+            <Spinner size="small" />
+          ) : (
+            <Ionicons name="refresh" size={14} />
+          )}
+        </Button>
+      </XStack>
+    </Card>
+  );
+
+  // Componente de estadísticas mejorado
+  const StatisticsRow = () => {
+    if (!statistics) return null;
+
+    return (
+      <XStack jc="space-around" p="$3" bg="$background" br="$3" mb="$3">
+        <YStack ai="center">
+          <Text fontSize="$5" fontWeight="bold" color="$primary">
+            {statistics.total}
+          </Text>
+          <Text fontSize="$2" color="$textSecondary">Total</Text>
+        </YStack>
+        <YStack ai="center">
+          <Text fontSize="$5" fontWeight="bold" color="$green9">
+            {statistics.activos}
+          </Text>
+          <Text fontSize="$2" color="$textSecondary">Activos</Text>
+        </YStack>
+        <YStack ai="center">
+          <Text fontSize="$5" fontWeight="bold" color="$blue9">
+            {statistics.programados}
+          </Text>
+          <Text fontSize="$2" color="$textSecondary">Programados</Text>
+        </YStack>
+        <YStack ai="center">
+          <Text fontSize="$5" fontWeight="bold" color="$gray9">
+            {statistics.finalizados}
+          </Text>
+          <Text fontSize="$2" color="$textSecondary">Finalizados</Text>
+        </YStack>
+      </XStack>
+    );
+  };
 
   // Componente de estado vacío
   const EmptyState = () => (
@@ -32,7 +144,10 @@ export default function AnunciosScreen() {
           No hay anuncios disponibles
         </Text>
         <Text fontSize="$4" color="$textSecondary" ta="center" maxWidth={280}>
-          Por el momento no hay anuncios municipales publicados
+          {isConnected 
+            ? 'No hay anuncios municipales publicados en este momento'
+            : 'Sin conexión al servidor. Los anuncios se mostrarán cuando se restablezca la conexión.'
+          }
         </Text>
       </YStack>
 
@@ -50,14 +165,14 @@ export default function AnunciosScreen() {
         <XStack ai="center" gap="$2">
           <Ionicons name="refresh" size={16} color="white" />
           <Text color="white" fontWeight="bold">
-            Actualizar
+            {isConnected ? 'Actualizar' : 'Reintentar conexión'}
           </Text>
         </XStack>
       </Button>
     </Card>
   );
 
-  // Componente de error
+  // Componente de error mejorado
   const ErrorState = () => (
     <Card
       bg="white"
@@ -85,24 +200,44 @@ export default function AnunciosScreen() {
         </Text>
       </YStack>
 
-      <Button
-        size="$4"
-        bg="$red8"
-        color="white"
-        onPress={refetch}
-        disabled={loading}
-        pressStyle={{
-          bg: "$red9",
-          scale: 0.95
-        }}
-      >
-        <XStack ai="center" gap="$2">
-          <Ionicons name="refresh" size={16} color="white" />
-          <Text color="white" fontWeight="bold">
-            Reintentar
-          </Text>
-        </XStack>
-      </Button>
+      <XStack gap="$2">
+        <Button
+          size="$4"
+          bg="$red8"
+          color="white"
+          onPress={refetch}
+          disabled={loading}
+          pressStyle={{
+            bg: "$red9",
+            scale: 0.95
+          }}
+          flex={1}
+        >
+          <XStack ai="center" gap="$2">
+            <Ionicons name="refresh" size={16} color="white" />
+            <Text color="white" fontWeight="bold">
+              Reintentar
+            </Text>
+          </XStack>
+        </Button>
+
+        <Button
+          size="$4"
+          variant="outlined"
+          borderColor="$blue8"
+          color="$blue9"
+          onPress={handleTestConnection}
+          disabled={testingConnection}
+          flex={1}
+        >
+          <XStack ai="center" gap="$2">
+            <Ionicons name="checkmark-circle-outline" size={16} color="#3B82F6" />
+            <Text color="$blue9" fontWeight="bold">
+              Test API
+            </Text>
+          </XStack>
+        </Button>
+      </XStack>
     </Card>
   );
 
@@ -128,7 +263,10 @@ export default function AnunciosScreen() {
           Cargando anuncios...
         </Text>
         <Text fontSize="$4" color="$textSecondary" ta="center">
-          Obteniendo la información más reciente
+          {connectionStatus === 'testing' 
+            ? 'Conectando con el servidor...'
+            : 'Obteniendo la información más reciente'
+          }
         </Text>
       </YStack>
     </Card>
@@ -157,15 +295,28 @@ export default function AnunciosScreen() {
           }
         >
           <YStack f={1} p="$4" gap="$4">
-            {/* Header de estadísticas */}
+            {/* Estado de conexión */}
+            <ConnectionStatus />
+
+            {/* Estadísticas */}
+            <StatisticsRow />
+
+            {/* Header de contenido */}
             <XStack ai="center" jc="space-between">
               <YStack>
                 <Text fontSize="$6" fontWeight="bold" color="$textPrimary">
                   Últimos Anuncios
                 </Text>
-                <Text fontSize="$3" color="$textSecondary">
-                  {anuncios.length} anuncio{anuncios.length !== 1 ? 's' : ''} disponible{anuncios.length !== 1 ? 's' : ''}
-                </Text>
+                  <XStack ai="center" gap="$2">
+                    <Text fontSize="$3" color="$textSecondary">
+                      {anuncios.length} anuncio{anuncios.length !== 1 ? 's' : ''} disponible{anuncios.length !== 1 ? 's' : ''}
+                    </Text>
+                    {!isConnected && (
+                      <Badge variant="warning" size="sm">
+                        OFFLINE
+                      </Badge>
+                    )}
+                  </XStack>
               </YStack>
 
               <Button
@@ -204,9 +355,13 @@ export default function AnunciosScreen() {
               <EmptyState />
             ) : (
               /* Lista de anuncios */
-              <YStack gap="$4">
+              <YStack gap="$3">
                 {anuncios.map((anuncio) => (
-                  <AnuncioCard key={anuncio.id} anuncio={anuncio} />
+                  <AnuncioCard 
+                    key={anuncio.id} 
+                    anuncio={anuncio}
+                    isOffline={!isConnected}
+                  />
                 ))}
               </YStack>
             )}

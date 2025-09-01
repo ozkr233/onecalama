@@ -14,7 +14,7 @@ interface UserDisplayProps {
 
 export function UserDisplay({ 
   variant = 'first-name',
-  size = 'medium',
+  size = 'small',
   color,
   showAdmin = true,
   fallback = 'Usuario'
@@ -182,7 +182,7 @@ export function UserGreeting() {
 
   return (
     <YStack gap="$1">
-      <Text fontSize="$3" color="rgba(255,255,255,0.8)">
+      <Text fontSize="$3" color="rgba(255, 255, 255, 0.8)">
         {getGreeting()}
       </Text>
       <Text fontSize="$4" color="white" fontWeight="600">

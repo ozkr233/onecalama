@@ -247,7 +247,6 @@ class DenunciasService {
         longitud: formData.ubicacion?.longitud ?
           parseFloat(formData.ubicacion.longitud.toFixed(6)) : -68.931700, // 6 decimales = 8 dígitos totales
         junta_vecinal: 1, // Usar la primera junta vecinal como default por ahora
-        // NUEVO: Agregar usuario (obtenido del token JWT)
         usuario: await UserHelper.getCurrentUserId(),
       };
 

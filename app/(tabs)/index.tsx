@@ -1,4 +1,4 @@
-// app/(tabs)/index.tsx - PANTALLA PRINCIPAL CON AUTENTICACIÓN
+// app/(tabs)/index.tsx - PANTALLA PRINCIPAL ACTUALIZADA CON ANUNCIOS
 import React from 'react';
 import { Text, YStack, XStack, Button, Card, H4, H5 } from 'tamagui';
 import { SafeAreaView, ScrollView } from 'react-native';
@@ -6,11 +6,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AppHeader from '../../src/components/layout/AppHeader';
 import { WelcomeSection } from '../../src/components/ui/WelcomeSection';
+import AnuncioCard from '../../src/components/ui/AnuncioCard';
 import { useAuth } from '../../src/hooks/useAuth';
+import { useAnuncios } from '../../src/hooks/useAnuncios';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  const { anuncios, loading: anunciosLoading } = useAnuncios();
+  const [isConnected, setIsConnected] = React.useState(true); // Estado de conexión
 
   // Si no está autenticado, mostrar mensaje de carga
   if (!isAuthenticated) {
@@ -24,6 +28,8 @@ export default function HomeScreen() {
       </SafeAreaView>
     );
   }
+  const anunciosRecientes = anuncios.slice(0, 1);
+  
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
@@ -194,8 +200,7 @@ export default function HomeScreen() {
               </YStack>
             </XStack>
           </Card>
-
-          {/* Último Anuncio Municipal */}
+          {/* Sección de Últimos Anuncios */}
           <Card
             bg="white"
             p="$4"
@@ -206,54 +211,113 @@ export default function HomeScreen() {
             shadowRadius={4}
             elevation={3}
           >
-            <XStack justifyContent="space-between" alignItems="center" mb="$3">
-              <H5 color="$textPrimary" fontWeight="bold">
-                Último Anuncio
-              </H5>
-              <Button 
-                size="$2" 
-                variant="outlined" 
+            <XStack ai="center" jc="space-between" mb="$4">
+              <YStack>
+                <H4 color="$textPrimary" fontWeight="bold">
+                  Últimos Anuncios
+                </H4>
+                <Text fontSize="$3" color="$textSecondary">
+                  Información municipal reciente
+                </Text>
+              </YStack>
+
+              <Button
+                size="$3"
+                variant="outlined"
+                bg="transparent"
                 borderColor="$primary"
+                color="$primary"
                 onPress={() => router.push('/anuncios')}
+                pressStyle={{
+                  bg: "$primary",
+                  borderColor: "$primary",
+                  scale: 0.95
+                }}
               >
-                <Text color="$primary" fontSize="$3">Ver todos</Text>
+                <XStack ai="center" gap="$1">
+                  <Text fontSize="$3" fontWeight="600" color="$primary">
+                    Ver todos
+                  </Text>
+                  <Ionicons name="arrow-forward" size={14} color="#E67E22" />
+                </XStack>
               </Button>
             </XStack>
 
-            <XStack alignItems="center" gap="$3">
-              <YStack
-                width={40}
-                height={40}
-                borderRadius={20}
-                backgroundColor="$secondary"
-                justifyContent="center"
-                alignItems="center"
-              >
-                <Ionicons name="megaphone" size={20} color="white" />
-              </YStack>
-
-              <YStack flex={1} gap="$1">
-                <Text fontWeight="600" color="$textPrimary">
-                  Información importante
-                </Text>
-                <Text fontSize="$3" color="$textSecondary">
-                  No hay anuncios recientes disponibles
-                </Text>
-              </YStack>
-
-              <YStack
-                backgroundColor="$info"
-                paddingHorizontal="$2"
-                paddingVertical="$1"
-                borderRadius="$2"
-              >
-                <Text color="white" fontSize="$2" fontWeight="600">
-                  Nuevo
+            {/* Estados de los anuncios */}
+            {anunciosLoading ? (
+              // Estado de carga
+              <YStack ai="center" jc="center" py="$6" gap="$3">
+                <YStack
+                  w={40}
+                  h={40}
+                  br={20}
+                  bg="$primary"
+                  ai="center"
+                  jc="center"
+                  animation="quick"
+                  style={{
+                    transform: [{ rotate: '360deg' }]
+                  }}
+                >
+                  <Ionicons name="megaphone" size={20} color="white" />
+                </YStack>
+                <Text fontSize="$4" color="$textSecondary" fontWeight="500">
+                  Cargando anuncios...
                 </Text>
               </YStack>
-            </XStack>
-          </Card>
+            ) : anunciosRecientes.length > 0 ? (
+              // Mostrar anuncios recientes
+              <YStack gap="$3">
+                {anunciosRecientes.map((anuncio) => (
+                  <AnuncioCard 
+                    key={anuncio.id} 
+                    anuncio={anuncio}
+                    isOffline={!isConnected}
+                  />
+                ))}
 
+                {anuncios.length > 2 && (
+                  <Card 
+                    bg="$gray2" 
+                    p="$3" 
+                    br="$3" 
+                    borderWidth={1} 
+                    borderColor="$borderColor"
+                  >
+                    <XStack ai="center" jc="center" gap="$2">
+                      <Ionicons name="information-circle-outline" size={18} color="#666" />
+                      <Text fontSize="$3" color="$textSecondary">
+                        {anuncios.length - 2} anuncio{anuncios.length - 2 !== 1 ? 's' : ''} más disponible{anuncios.length - 2 !== 1 ? 's' : ''}
+                      </Text>
+                    </XStack>
+                  </Card>
+                )}
+              </YStack>
+            ) : (
+              // Estado vacío
+              <YStack ai="center" jc="center" py="$6" gap="$3">
+                <YStack
+                  w={50}
+                  h={50}
+                  br={25}
+                  bg="$gray5"
+                  ai="center"
+                  jc="center"
+                >
+                  <Ionicons name="megaphone-outline" size={24} color="#999" />
+                </YStack>
+                <Text fontSize="$4" color="$textSecondary" fontWeight="500" ta="center">
+                  No hay anuncios disponibles
+                </Text>
+                <Text fontSize="$3" color="$textSecondary" ta="center" maxWidth={280}>
+                  {isConnected 
+                    ? 'No hay anuncios municipales publicados en este momento'
+                    : 'Verifica tu conexión para ver los anuncios más recientes'
+                  }
+                </Text>
+              </YStack>
+            )}
+            </Card>
           {/* Información del usuario (solo para admin) */}
           {user?.es_administrador && (
             <Card

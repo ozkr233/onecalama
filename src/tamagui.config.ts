@@ -1,9 +1,6 @@
-// src/tamagui.config.ts - Configuración final fusionada (con fuentes Inter)
+// src/tamagui.config.ts - Configuración con fuentes del sistema
 import { config } from '@tamagui/config/v3'
 import { createTamagui } from 'tamagui'
-
-// ✅ NOTA: Asegúrate de cargar las fuentes en App.tsx con @expo-google-fonts/inter
-// useFonts({ Inter: Inter_400Regular, InterMedium: Inter_500Medium, InterBold: Inter_700Bold })
 
 // Colores personalizados de la municipalidad de Calama
 const customTokens = {
@@ -57,26 +54,27 @@ const customTokens = {
   },
 }
 
-// ✅ Override de fuentes para usar Inter (sin romper el preset v3)
+// ✅ Usar fuentes del sistema en lugar de Inter
 const fonts = {
   ...config.fonts,
 
-  // Fuente principal de texto
+  // Fuente principal - usar fuente del sistema
   body: {
     ...config.fonts.body,
-    family: 'Inter',                 // ← coincide con la key que cargas en useFonts
+    family: 'System', // Fuente del sistema
     weight: {
       ...config.fonts.body?.weight,
       4: '400', // Regular
       5: '500', // Medium
+      6: '600', // SemiBold
       7: '700', // Bold
     },
   },
 
-  // Encabezados también con Inter (puedes subir pesos si quieres)
+  // Encabezados - también con fuente del sistema
   heading: {
     ...config.fonts.heading,
-    family: 'Inter',
+    family: 'System', // Fuente del sistema
     weight: {
       ...config.fonts.heading?.weight,
       5: '500',
@@ -86,7 +84,7 @@ const fonts = {
     },
   },
 
-  // Monoespaciada: deja la del preset o cámbiala si cargaste otra
+  // Monoespaciada - mantener la del preset
   mono: {
     ...config.fonts.mono,
   },
@@ -98,9 +96,8 @@ const appConfig = createTamagui({
     ...config.tokens,
     ...customTokens,
   },
-  // ✅ Aplica las fuentes Inter
+  // ✅ Aplicar las fuentes del sistema
   fonts,
-  // (opcional) fuerza font por defecto en componentes que no especifiquen
   defaultFont: 'body',
 
   themes: {

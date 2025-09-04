@@ -1,296 +1,311 @@
-// src/hooks/useHistorial.ts
+// src/hooks/useHistorial.ts - HOOK DESDE CERO
 import { useState, useEffect, useCallback } from 'react';
-import { HistorialDenuncia, FiltrosHistorial, EstadisticasHistorial } from '../types/historial';
+import {
+  HistorialDenuncia,
+  EstadisticasHistorial,
+  FiltrosHistorial
+} from '../types/historial';
+import { historialService } from '../services/historial';
 
-// Datos placeholder directamente en el hook para evitar problemas de import
-const estadisticasPlaceholder: EstadisticasHistorial = {
-  totalDenuncias: 12,
-  resueltas: 7,
-  pendientes: 3,
-  enProceso: 2,
-  tiempoPromedioRespuesta: 5.2,
-  satisfaccionPromedio: 4.1
-};
+interface UseHistorialReturn {
+  // Estado principal
+  denuncias: HistorialDenuncia[];
+  estadisticas: EstadisticasHistorial | null;
+  loading: boolean;
+  error: string | null;
+  filtros: FiltrosHistorial;
+  
+  // Estados auxiliares
+  isRefreshing: boolean;
+  isBackendConnected: boolean;
+  notificacionesNoLeidas: number;
+  
+  // Datos calculados
+  totalDenuncias: number;
+  denunciasPendientes: number;
+  denunciasResueltas: number;
+  hayDatos: boolean;
+  hayError: boolean;
+  hayFiltrosActivos: boolean;
+  
+  // Acciones
+  cargarHistorial: () => Promise<void>;
+  cargarEstadisticas: () => Promise<void>;
+  aplicarFiltros: (filtros: FiltrosHistorial) => void;
+  limpiarFiltros: () => void;
+  marcarRespuestaComoLeida: (respuestaId: string) => Promise<void>;
+  calificarSatisfaccion: (denunciaId: string, calificacion: 1 | 2 | 3 | 4 | 5, comentario?: string) => Promise<void>;
+  obtenerDenunciaPorId: (id: string) => Promise<HistorialDenuncia | null>;
+  refresh: () => Promise<void>;
+  recargarCompleto: () => Promise<void>;
+}
 
-const denunciasPlaceholder: HistorialDenuncia[] = [
-  {
-    id: '1',
-    numeroFolio: 'CAL-2024-001',
-    titulo: 'Luminaria dañada en Av. Brasil',
-    descripcion: 'La luminaria ubicada en Av. Brasil esquina con Calle Ramírez está intermitente desde hace una semana, causando problemas de visibilidad nocturna.',
-    categoria: 'Alumbrado Público',
-    estado: 'en_proceso',
-    prioridad: 'media',
-    fechaCreacion: '2024-12-15T10:30:00Z',
-    fechaActualizacion: '2024-12-20T14:00:00Z',
-    ubicacion: {
-      direccion: 'Av. Brasil esquina con Calle Ramírez, Calama',
-      coordenadas: {
-        latitud: -22.4569,
-        longitud: -68.9270
-      }
-    },
-    evidenciasIniciales: [
-      {
-        id: 'ev1',
-        tipo: 'imagen',
-        url: 'https://via.placeholder.com/400x300/E67E22/FFFFFF?text=Luminaria+Dañada',
-        nombre: 'luminaria_dañada.jpg',
-        fechaSubida: '2024-12-15T10:30:00Z',
-        descripcion: 'Foto de la luminaria intermitente'
-      }
-    ],
-    respuestas: [
-      {
-        id: 'resp1',
-        contenido: 'Hemos recibido su reporte y ya se asignó a nuestro equipo técnico. Estimamos tener una solución en 3-5 días hábiles.',
-        fechaRespuesta: '2024-12-16T09:00:00Z',
-        autorRespuesta: 'María González',
-        cargoAutor: 'Coordinadora de Alumbrado Público',
-        evidencias: [],
-        esRespuestaOficial: true,
-        leida: true
-      },
-      {
-        id: 'resp2',
-        contenido: 'El equipo técnico visitó el lugar y confirmó el problema. Ya se solicitó el reemplazo de la luminaria. Se realizará la instalación mañana entre 08:00 y 12:00 hrs.',
-        fechaRespuesta: '2024-12-20T14:00:00Z',
-        autorRespuesta: 'Carlos Pérez',
-        cargoAutor: 'Técnico en Electricidad',
-        evidencias: [
-          {
-            id: 'ev2',
-            tipo: 'imagen',
-            url: 'https://via.placeholder.com/400x300/009688/FFFFFF?text=Evaluación+Técnica',
-            nombre: 'evaluacion_tecnica.jpg',
-            fechaSubida: '2024-12-20T14:00:00Z',
-            descripcion: 'Evaluación técnica del problema'
-          }
-        ],
-        esRespuestaOficial: true,
-        leida: false
-      }
-    ],
-    tiempoRespuesta: 1,
-    departamentoAsignado: 'Departamento de Servicios Públicos',
-    funcionarioAsignado: 'Carlos Pérez'
-  },
-  {
-    id: '2',
-    numeroFolio: 'CAL-2024-002',
-    titulo: 'Bache en Calle Granaderos',
-    descripcion: 'Existe un bache de gran tamaño en Calle Granaderos que puede causar daños a los vehículos.',
-    categoria: 'Infraestructura Vial',
-    estado: 'resuelto',
-    prioridad: 'alta',
-    fechaCreacion: '2024-12-10T15:45:00Z',
-    fechaActualizacion: '2024-12-18T16:30:00Z',
-    ubicacion: {
-      direccion: 'Calle Granaderos 1250, Calama'
-    },
-    evidenciasIniciales: [],
-    respuestas: [
-      {
-        id: 'resp3',
-        contenido: 'Recibimos su reporte. El área será inspeccionada dentro de las próximas 48 horas.',
-        fechaRespuesta: '2024-12-11T08:30:00Z',
-        autorRespuesta: 'Ana Silva',
-        cargoAutor: 'Jefa de Mantención Vial',
-        evidencias: [],
-        esRespuestaOficial: true,
-        leida: true
-      }
-    ],
-    tiempoRespuesta: 8,
-    satisfaccionCiudadano: 5,
-    departamentoAsignado: 'Departamento de Obras Públicas'
-  },
-  {
-    id: '3',
-    numeroFolio: 'CAL-2024-003',
-    titulo: 'Ruidos molestos en horario nocturno',
-    descripcion: 'Vecinos reportan ruidos excesivos provenientes de local comercial durante la madrugada.',
-    categoria: 'Ruidos Molestos',
-    estado: 'pendiente',
-    prioridad: 'media',
-    fechaCreacion: '2024-12-22T23:15:00Z',
-    fechaActualizacion: '2024-12-22T23:15:00Z',
-    ubicacion: {
-      direccion: 'Av. O\'Higgins 1856, Calama'
-    },
-    evidenciasIniciales: [],
-    respuestas: [],
-    departamentoAsignado: 'Departamento de Fiscalización'
-  }
-];
-
-export const useHistorial = () => {
+export function useHistorial(): UseHistorialReturn {
+  // Estados principales
   const [denuncias, setDenuncias] = useState<HistorialDenuncia[]>([]);
   const [estadisticas, setEstadisticas] = useState<EstadisticasHistorial | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filtros, setFiltros] = useState<FiltrosHistorial>({});
+  
+  // Estados auxiliares
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isBackendConnected, setIsBackendConnected] = useState(true);
   const [notificacionesNoLeidas, setNotificacionesNoLeidas] = useState(0);
 
-  // Simular carga de datos
-  const cargarHistorial = useCallback(async (nuevosFiltros?: FiltrosHistorial) => {
-    setLoading(true);
-    setError(null);
-    
+  // Cargar historial
+  const cargarHistorial = useCallback(async () => {
     try {
-      // Simular delay de API
-      await new Promise(resolve => setTimeout(resolve, 800));
+      console.log('🔄 [HOOK] Cargando historial...');
       
-      let denunciasFiltradas = [...denunciasPlaceholder];
-      const filtrosActuales = nuevosFiltros || filtros;
+      if (!isRefreshing) {
+        setLoading(true);
+      }
+      setError(null);
 
-      // Aplicar filtros
-      if (filtrosActuales.busqueda) {
-        const busqueda = filtrosActuales.busqueda.toLowerCase();
-        denunciasFiltradas = denunciasFiltradas.filter(denuncia => 
-          denuncia.titulo.toLowerCase().includes(busqueda) ||
-          denuncia.descripcion.toLowerCase().includes(busqueda) ||
-          denuncia.numeroFolio.toLowerCase().includes(busqueda)
-        );
+      // Verificar conectividad
+      const conectado = await historialService.verificarConexion();
+      setIsBackendConnected(conectado);
+
+      if (!conectado) {
+        throw new Error('Sin conexión al servidor');
       }
 
-      if (filtrosActuales.estado?.length) {
-        denunciasFiltradas = denunciasFiltradas.filter(denuncia =>
-          filtrosActuales.estado?.includes(denuncia.estado)
-        );
-      }
-
-      if (filtrosActuales.categoria?.length) {
-        denunciasFiltradas = denunciasFiltradas.filter(denuncia =>
-          filtrosActuales.categoria?.includes(denuncia.categoria)
-        );
-      }
-
-      // Ordenar por fecha de actualización (más recientes primero)
-      denunciasFiltradas.sort((a, b) => 
-        new Date(b.fechaActualizacion).getTime() - new Date(a.fechaActualizacion).getTime()
-      );
-
-      setDenuncias(denunciasFiltradas);
+      // Cargar datos
+      const historialData = await historialService.obtenerHistorial(filtros);
+      setDenuncias(historialData);
       
-      if (nuevosFiltros) {
-        setFiltros(nuevosFiltros);
-      }
-    } catch (err) {
-      setError('Error al cargar el historial');
-      console.error('Error simulado:', err);
+      // Calcular notificaciones no leídas
+      const noLeidas = historialData.reduce((total, denuncia) => {
+        const respuestasNoLeidas = denuncia.respuestas.filter(r => !r.leida).length;
+        return total + respuestasNoLeidas;
+      }, 0);
+      setNotificacionesNoLeidas(noLeidas);
+
+      console.log(`✅ [HOOK] ${historialData.length} denuncias cargadas, ${noLeidas} respuestas no leídas`);
+      
+    } catch (err: any) {
+      console.error('❌ [HOOK] Error cargando historial:', err.message);
+      setError(err.message);
+      setIsBackendConnected(false);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
-  }, [filtros]);
+  }, [filtros, isRefreshing]);
 
+  // Cargar estadísticas
   const cargarEstadisticas = useCallback(async () => {
     try {
-      // Simular delay de API
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setEstadisticas(estadisticasPlaceholder);
-    } catch (err) {
-      console.error('Error al cargar estadísticas:', err);
-    }
-  }, []);
-
-  const cargarNotificaciones = useCallback(async () => {
-    try {
-      // Contar respuestas no leídas
-      const noLeidas = denunciasPlaceholder.reduce((total, denuncia) => {
-        const respuestasNoLeidas = denuncia.respuestas.filter(respuesta => !respuesta.leida);
-        return total + respuestasNoLeidas.length;
-      }, 0);
+      console.log('📊 [HOOK] Cargando estadísticas...');
       
-      setNotificacionesNoLeidas(noLeidas);
-    } catch (err) {
-      console.error('Error al cargar notificaciones:', err);
+      const estadisticasData = await historialService.obtenerEstadisticas();
+      setEstadisticas(estadisticasData);
+      
+      console.log('✅ [HOOK] Estadísticas cargadas');
+      
+    } catch (err: any) {
+      console.error('❌ [HOOK] Error cargando estadísticas:', err.message);
+      
+      // En caso de error, usar estadísticas vacías
+      if (!estadisticas) {
+        setEstadisticas({
+          totalDenuncias: 0,
+          resueltas: 0,
+          pendientes: 0,
+          enProceso: 0,
+          rechazadas: 0,
+          cerradas: 0,
+          tiempoPromedioRespuesta: 0,
+          satisfaccionPromedio: 0,
+          porcentajeResolucion: 0,
+          denunciasPorCategoria: {},
+          denunciasPorMes: {},
+          tendencia: 'sin_datos'
+        });
+      }
     }
+  }, [estadisticas]);
+
+  // Aplicar filtros
+  const aplicarFiltros = useCallback((nuevosFiltros: FiltrosHistorial) => {
+    console.log('🔍 [HOOK] Aplicando filtros:', nuevosFiltros);
+    setFiltros(nuevosFiltros);
   }, []);
 
-  const aplicarFiltros = useCallback((nuevosFiltros: FiltrosHistorial) => {
-    cargarHistorial(nuevosFiltros);
-  }, [cargarHistorial]);
-
+  // Limpiar filtros
   const limpiarFiltros = useCallback(() => {
+    console.log('🧹 [HOOK] Limpiando filtros');
     setFiltros({});
-    cargarHistorial({});
-  }, [cargarHistorial]);
+  }, []);
 
+  // Marcar respuesta como leída
   const marcarRespuestaComoLeida = useCallback(async (respuestaId: string) => {
     try {
-      // Simular actualización en el backend
-      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log('📖 [HOOK] Marcando respuesta como leída:', respuestaId);
+      
+      await historialService.marcarRespuestaLeida(respuestaId);
       
       // Actualizar estado local
       setDenuncias(prev => prev.map(denuncia => ({
         ...denuncia,
         respuestas: denuncia.respuestas.map(respuesta =>
-          respuesta.id === respuestaId 
+          respuesta.id === respuestaId
             ? { ...respuesta, leida: true }
             : respuesta
         )
       })));
-      
-      // Actualizar notificaciones
-      cargarNotificaciones();
-      
-      console.log('Respuesta marcada como leída:', respuestaId);
-    } catch (err) {
-      console.error('Error al marcar como leída:', err);
-    }
-  }, [cargarNotificaciones]);
 
+      // Actualizar contador de notificaciones
+      setNotificacionesNoLeidas(prev => Math.max(0, prev - 1));
+      
+      console.log('✅ [HOOK] Respuesta marcada como leída');
+      
+    } catch (err: any) {
+      console.error('❌ [HOOK] Error marcando respuesta:', err.message);
+      // No lanzar error - operación no crítica
+    }
+  }, []);
+
+  // Calificar satisfacción
   const calificarSatisfaccion = useCallback(async (
-    denunciaId: string, 
+    denunciaId: string,
     calificacion: 1 | 2 | 3 | 4 | 5,
     comentario?: string
   ) => {
     try {
-      // Simular envío al backend
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('⭐ [HOOK] Enviando calificación:', { denunciaId, calificacion });
+      
+      await historialService.calificarSatisfaccion(denunciaId, calificacion, comentario);
       
       // Actualizar estado local
       setDenuncias(prev => prev.map(denuncia =>
         denuncia.id === denunciaId 
-          ? { ...denuncia, satisfaccionCiudadano: calificacion }
+          ? { 
+              ...denuncia, 
+              satisfaccionCiudadano: calificacion,
+              comentarioSatisfaccion: comentario
+            }
           : denuncia
       ));
       
-      console.log('Calificación enviada:', { denunciaId, calificacion, comentario });
-    } catch (err) {
-      console.error('Error al calificar:', err);
+      console.log('✅ [HOOK] Calificación enviada');
+      
+    } catch (err: any) {
+      console.error('❌ [HOOK] Error enviando calificación:', err.message);
       throw err;
     }
   }, []);
 
   // Obtener denuncia por ID
-  const obtenerDenunciaPorId = useCallback((id: string): HistorialDenuncia | undefined => {
-    return denunciasPlaceholder.find(denuncia => denuncia.id === id);
-  }, []);
+  const obtenerDenunciaPorId = useCallback(async (id: string): Promise<HistorialDenuncia | null> => {
+    try {
+      console.log('🔎 [HOOK] Obteniendo denuncia por ID:', id);
+      
+      // Buscar primero en estado local
+      const denunciaLocal = denuncias.find(d => d.id === id);
+      if (denunciaLocal) {
+        console.log('✅ [HOOK] Denuncia encontrada en estado local');
+        return denunciaLocal;
+      }
+      
+      // Si no está local, buscar en backend
+      const denunciaBackend = await historialService.obtenerDenunciaPorId(id);
+      
+      if (denunciaBackend) {
+        console.log('✅ [HOOK] Denuncia obtenida del backend');
+        return denunciaBackend;
+      }
+      
+      console.log('⚠️ [HOOK] Denuncia no encontrada');
+      return null;
+      
+    } catch (err: any) {
+      console.error('❌ [HOOK] Error obteniendo denuncia:', err.message);
+      return null;
+    }
+  }, [denuncias]);
 
-  // Cargar datos iniciales
+  // Refresh (pull to refresh)
+  const refresh = useCallback(async () => {
+    console.log('🔄 [HOOK] Refrescando datos...');
+    setIsRefreshing(true);
+    
+    await Promise.all([
+      cargarHistorial(),
+      cargarEstadisticas()
+    ]);
+    
+    console.log('✅ [HOOK] Refresh completado');
+  }, [cargarHistorial, cargarEstadisticas]);
+
+  // Recarga completa (para recuperarse de errores)
+  const recargarCompleto = useCallback(async () => {
+    console.log('🔄 [HOOK] Recarga completa...');
+    
+    setLoading(true);
+    setError(null);
+    setIsRefreshing(false);
+    
+    try {
+      await Promise.all([
+        cargarHistorial(),
+        cargarEstadisticas()
+      ]);
+    } catch (err: any) {
+      console.error('❌ [HOOK] Error en recarga completa:', err.message);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [cargarHistorial, cargarEstadisticas]);
+
+  // Efectos
   useEffect(() => {
+    console.log('🚀 [HOOK] Inicializando useHistorial...');
     cargarHistorial();
     cargarEstadisticas();
-    cargarNotificaciones();
-  }, []);
+  }, []); // Solo al montar
 
-  // Función refresh
-  const refresh = useCallback(() => {
-    cargarHistorial();
-    cargarEstadisticas();
-    cargarNotificaciones();
-  }, [cargarHistorial, cargarEstadisticas, cargarNotificaciones]);
+  // Recargar cuando cambien los filtros
+  useEffect(() => {
+    if (Object.keys(filtros).length > 0) {
+      console.log('🔍 [HOOK] Filtros cambiaron, recargando...');
+      cargarHistorial();
+    }
+  }, [filtros, cargarHistorial]);
+
+  // Datos calculados
+  const totalDenuncias = denuncias.length;
+  const denunciasPendientes = denuncias.filter(d => d.estado === 'pendiente').length;
+  const denunciasResueltas = denuncias.filter(d => d.estado === 'resuelto').length;
+  const hayDatos = totalDenuncias > 0;
+  const hayError = !!error;
+  const hayFiltrosActivos = Object.keys(filtros).some(key => {
+    const value = filtros[key as keyof FiltrosHistorial];
+    return Array.isArray(value) ? value.length > 0 : !!value;
+  });
 
   return {
-    // Estado
+    // Estado principal
     denuncias,
     estadisticas,
     loading,
     error,
     filtros,
+    
+    // Estados auxiliares
+    isRefreshing,
+    isBackendConnected,
     notificacionesNoLeidas,
+    
+    // Datos calculados
+    totalDenuncias,
+    denunciasPendientes,
+    denunciasResueltas,
+    hayDatos,
+    hayError,
+    hayFiltrosActivos,
     
     // Acciones
     cargarHistorial,
@@ -300,6 +315,7 @@ export const useHistorial = () => {
     marcarRespuestaComoLeida,
     calificarSatisfaccion,
     obtenerDenunciaPorId,
-    refresh
+    refresh,
+    recargarCompleto
   };
-};
+}

@@ -46,7 +46,6 @@ export const ENDPOINTS = {
 
   // Publicaciones (denuncias) - BASADO EN TU VIEWSET
   PUBLICACIONES: '/publicaciones/',                  // ✅ v1/publicaciones/
-  MIS_PUBLICACIONES: '/publicaciones/mis_publicaciones/', // Si tienes este action
   PUBLICACION_DETALLE: (id: number) => `/publicaciones/${id}/`,
 
   // Evidencias - EXACTO DE TU BACKEND

@@ -16,7 +16,7 @@ interface CacheItem<T> {
 
 // Configuración de timeouts
 const TIMEOUTS = {
-  GET_LIST: 10000,
+  GET_LIST: 60000,
   CREATE: 15000,
   UPDATE: 12000,
   DELETE: 8000,
@@ -360,7 +360,7 @@ class ApiService {
       // Traer perfil por ID y cachearlo
       if (userId != null && access) {
         try {
-          const perfil = await this.get(`${(ENDPOINTS.USUARIOS || '/usuarios/')}${userId}/`, true);
+          const perfil = await this.get(`${(ENDPOINTS.AUTH.PROFILE || '/usuarios/')}${userId}/`, true);
           await AsyncStorage.setItem(this.STORAGE_KEYS.USER_INFO, JSON.stringify(perfil));
           console.log('👤 Perfil cacheado en AsyncStorage');
         } catch (e) {
@@ -467,7 +467,7 @@ class ApiService {
       if (userIdStr) {
         const userId = Number(userIdStr);
         if (!Number.isNaN(userId)) {
-          const perfil = await this.get(`${(ENDPOINTS.USUARIOS || '/usuarios/')}${userId}/`, true);
+          const perfil = await this.get(`${(ENDPOINTS.AUTH.PROFILE || '/usuarios/')}${userId}/`, true);
           await AsyncStorage.setItem(this.STORAGE_KEYS.USER_INFO, JSON.stringify(perfil));
           return perfil;
         }

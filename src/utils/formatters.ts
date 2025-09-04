@@ -1,6 +1,6 @@
-// src/utils/formatters.ts - UTILIDADES DE FORMATO
+// src/utils/formatters.ts - ACTUALIZADO CON 'sin_priorizar'
 
-import { EstadoDenuncia } from '../types/historial';
+import { EstadoDenuncia, PrioridadDenuncia } from '../types/historial';
 
 // Formatear fecha para mostrar al usuario
 export const formatearFecha = (fecha: string): string => {
@@ -62,18 +62,44 @@ export const formatearFechaCompleta = (fecha: string): string => {
   }
 };
 
-// Obtener color del estado
-export const getEstadoColor = (estado: EstadoDenuncia): string => {
-  const colores = {
-    resuelto: '#10B981', // Verde
-    pendiente: '#F59E0B', // Naranja/Amarillo
-    en_proceso: '#F59E0B', // Naranja/Amarillo
-    rechazado: '#6B7280', // Gris (No resuelto)
-    cerrado: '#6B7280' // Gris (No resuelto)
+// ✅ ACTUALIZADO: Obtener colores del estado con mejor estructura
+export const getEstadoColor = (estado: EstadoDenuncia) => {
+  const coloresEstado = {
+    pendiente: {
+      main: '#F59E0B',
+      border: '#D97706',
+      shadow: 'rgba(245, 158, 11, 0.4)',
+      background: '#FEF3C7'
+    },
+    en_proceso: {
+      main: '#3B82F6',
+      border: '#2563EB',
+      shadow: 'rgba(59, 130, 246, 0.4)',
+      background: '#DBEAFE'
+    },
+    resuelto: {
+      main: '#10B981',
+      border: '#059669',
+      shadow: 'rgba(16, 185, 129, 0.4)',
+      background: '#D1FAE5'
+    },
+    rechazado: {
+      main: '#EF4444',
+      border: '#DC2626',
+      shadow: 'rgba(239, 68, 68, 0.4)',
+      background: '#FEE2E2'
+    },
+    cerrado: {
+      main: '#6B7280',
+      border: '#4B5563',
+      shadow: 'rgba(107, 114, 128, 0.4)',
+      background: '#F3F4F6'
+    }
   };
 
-  return colores[estado] || '#6B7280';
+  return coloresEstado[estado] || coloresEstado.pendiente;
 };
+
 // Obtener texto legible del estado
 export const getEstadoTexto = (estado: EstadoDenuncia): string => {
   const textos = {
@@ -98,6 +124,62 @@ export const getEstadoIcono = (estado: EstadoDenuncia): string => {
   };
 
   return iconos[estado] || 'help-outline';
+};
+
+// ✅ NUEVO: Obtener colores de prioridad (incluye 'sin_priorizar')
+export const getPrioridadColor = (prioridad: PrioridadDenuncia) => {
+  const coloresPrioridad = {
+    alta: {
+      main: '#EF4444',
+      border: '#DC2626',
+      background: '#FEE2E2',
+      text: '#991B1B'
+    },
+    media: {
+      main: '#F59E0B',
+      border: '#D97706',
+      background: '#FEF3C7',
+      text: '#92400E'
+    },
+    baja: {
+      main: '#10B981',
+      border: '#059669',
+      background: '#D1FAE5',
+      text: '#065F46'
+    },
+    sin_priorizar: {
+      main: '#6B7280',
+      border: '#4B5563',
+      background: '#F3F4F6',
+      text: '#374151'
+    }
+  };
+
+  return coloresPrioridad[prioridad] || coloresPrioridad.sin_priorizar;
+};
+
+// ✅ NUEVO: Obtener texto de prioridad (incluye 'sin_priorizar')
+export const getPrioridadTexto = (prioridad: PrioridadDenuncia): string => {
+  const textos = {
+    alta: 'Alta',
+    media: 'Media',
+    baja: 'Baja',
+    sin_priorizar: 'Sin priorizar'
+  };
+
+  return textos[prioridad] || 'Sin priorizar';
+};
+
+// ✅ NUEVO: Obtener icono de prioridad (incluye 'sin_priorizar')
+export const getPrioridadIcono = (prioridad: PrioridadDenuncia): string => {
+  const iconos = {
+    alta: 'chevron-up-circle',
+    media: 'remove-circle-outline',
+    baja: 'chevron-down-circle',
+    sin_priorizar: 'ellipse-outline'
+  };
+
+  return iconos[prioridad] || 'ellipse-outline';
 };
 
 // Formatear tamaño de archivo
@@ -182,7 +264,7 @@ export const formatearPorcentaje = (valor: number, total: number): string => {
   return `${porcentaje}%`;
 };
 
-// Validar RUT chileno (opcional)
+// Validar RUT chileno
 export const validarRUT = (rut: string): boolean => {
   // Eliminar puntos y guión
   const rutLimpio = rut.replace(/[.-]/g, '');

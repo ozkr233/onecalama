@@ -100,10 +100,10 @@ const UbicacionSection: React.FC<UbicacionSectionProps> = ({
 
               <XStack gap="$4">
                 <Text fontSize="$2" color="$textSecondary">
-                  Lat: {ubicacion.latitude.toFixed(6)}
+                  Lat: {ubicacion.latitud.toFixed(6)}
                 </Text>
                 <Text fontSize="$2" color="$textSecondary">
-                  Lng: {ubicacion.longitude.toFixed(6)}
+                  Lng: {ubicacion.longitud.toFixed(6)}
                 </Text>
               </XStack>
             </YStack>

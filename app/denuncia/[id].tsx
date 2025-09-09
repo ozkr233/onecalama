@@ -1,7 +1,6 @@
-// app/denuncia/[id].tsx - ACTUALIZADO CON EVIDENCIAS EN RESPUESTAS
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView, Alert, FlatList, ScrollView } from 'react-native';
-import { Text, YStack, XStack, Card, H4, H5, Separator } from 'tamagui';
+import { SafeAreaView, Alert, ScrollView, RefreshControl } from 'react-native';
+import { Text, YStack, XStack, Card, H4, H5, Button } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AppHeader from '../../src/components/layout/AppHeader';
@@ -10,8 +9,8 @@ import { RespuestaItem } from '../../src/components/historial/RespuestaItem';
 import { EvidenciaViewerModal } from '../../src/components/historial/EvidenciaViewerModal';
 import { HistorialDenuncia, Respuesta, Evidencia } from '../../src/types/historial';
 import { formatearFecha, formatearFechaCompleta, getEstadoColor, getEstadoTexto } from '../../src/utils/formatters';
-import { obtenerDenunciaPorId, marcarRespuestasLeidas } from '../../src/data/historialData';
 import LoadingSpinner from '../../src/components/ui/Loading';
+import { historialService } from '../../src/services/historial';
 
 export default function DenunciaDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -20,6 +19,8 @@ export default function DenunciaDetailScreen() {
   // Estados principales
   const [denuncia, setDenuncia] = useState<HistorialDenuncia | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Estados para evidencias
   const [evidenciaVisible, setEvidenciaVisible] = useState(false);
@@ -28,46 +29,63 @@ export default function DenunciaDetailScreen() {
   useEffect(() => {
     if (id) {
       cargarDetalleDenuncia();
+    } else {
+      setError('ID de denuncia no proporcionado');
+      setLoading(false);
     }
   }, [id]);
 
   const cargarDetalleDenuncia = async () => {
     try {
       setLoading(true);
+      setError(null);
 
-      // Simular carga de API
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('🔍 [DETALLE] Cargando denuncia ID:', id);
 
-      const denunciaData = obtenerDenunciaPorId(id);
+      // Usar el servicio real de historial
+      const denunciaData = await historialService.obtenerDenunciaPorId(id!);
+      
       if (denunciaData) {
         setDenuncia(denunciaData);
-        // Marcar respuestas como leídas
-        marcarRespuestasLeidas(id);
+        console.log('✅ [DETALLE] Denuncia cargada exitosamente');
+        
+        // Marcar respuestas como leídas si existen
+        const respuestasNoLeidas = denunciaData.respuestas.filter(r => !r.leida);
+        if (respuestasNoLeidas.length > 0) {
+          await historialService.marcarRespuestaLeida(respuestasNoLeidas[0].id);
+        }
       } else {
-        Alert.alert('Error', 'No se encontró la denuncia');
-        router.back();
+        setError('Denuncia no encontrada');
       }
-    } catch (error) {
-      console.error('[API] Error cargando detalle:', error);
-      Alert.alert('Error', 'No se pudo cargar el detalle de la denuncia');
+    } catch (error: any) {
+      console.error('❌ [DETALLE] Error cargando detalle:', error);
+      setError(error.message || 'Error al cargar la denuncia');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await cargarDetalleDenuncia();
+    setRefreshing(false);
+  };
+
   // Función para manejar la calificación
   const handleSatisfactionRating = async (rating: number) => {
+    if (!denuncia) return;
+
     try {
       // Actualizar estado local inmediatamente para feedback visual
       setDenuncia(prev => prev ? { ...prev, satisfaccionCiudadano: rating } : null);
 
       console.log(`[API] Enviando calificación: ${rating} para denuncia ${id}`);
 
-      // TODO: Aquí iría la llamada a la API
-      // await HistorialService.calificarSatisfaccion(id, rating);
+      // Llamar al servicio real
+      await historialService.calificarSatisfaccion(denuncia.id, rating as 1 | 2 | 3 | 4 | 5);
 
       Alert.alert('¡Gracias!', 'Tu calificación ha sido registrada.');
-    } catch (error) {
+    } catch (error: any) {
       console.error('[API] Error enviando calificación:', error);
       // Revertir cambio local si hay error
       setDenuncia(prev => prev ? { ...prev, satisfaccionCiudadano: undefined } : null);
@@ -95,27 +113,28 @@ export default function DenunciaDetailScreen() {
         return { ...prev, respuestas: respuestasActualizadas };
       });
 
-      // TODO: Llamada a la API
-      // await HistorialService.marcarRespuestaComoLeida(respuestaId);
+      // Llamada al servicio
+      await historialService.marcarRespuestaLeida(respuestaId);
 
     } catch (error) {
       console.error('Error marcando respuesta como leída:', error);
     }
   };
 
+  // Pantalla de loading
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
         <AppHeader
           screenTitle="Cargando..."
-          screenSubtitle=""
+          screenSubtitle="Obteniendo detalles"
           screenIcon="document-text"
           showBackButton={true}
           onBackPress={() => router.back()}
         />
-        <YStack flex={1} justifyContent="center" alignItems="center">
-          <LoadingSpinner />
-          <Text mt="$4" color="$textSecondary">
+        <YStack flex={1} justifyContent="center" alignItems="center" gap="$4">
+          <LoadingSpinner size="large" />
+          <Text fontSize="$4" color="$gray9">
             Cargando detalles de la denuncia...
           </Text>
         </YStack>
@@ -123,24 +142,33 @@ export default function DenunciaDetailScreen() {
     );
   }
 
-  if (!denuncia) {
+  // Pantalla de error
+  if (error || !denuncia) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
         <AppHeader
           screenTitle="Error"
-          screenSubtitle=""
+          screenSubtitle="No se pudo cargar"
           screenIcon="alert-circle"
           showBackButton={true}
           onBackPress={() => router.back()}
         />
-        <YStack flex={1} justifyContent="center" alignItems="center" p="$4">
+        <YStack flex={1} justifyContent="center" alignItems="center" p="$4" gap="$4">
           <Ionicons name="document-text" size={64} color="#ccc" />
-          <Text fontSize="$5" fontWeight="bold" color="$textPrimary" mt="$4">
-            Denuncia no encontrada
+          <Text fontSize="$5" fontWeight="bold" color="$textPrimary">
+            {error || 'Denuncia no encontrada'}
           </Text>
-          <Text fontSize="$3" color="$textSecondary" textAlign="center" mt="$2">
+          <Text fontSize="$3" color="$textSecondary" textAlign="center">
             No se pudo cargar la información de esta denuncia
           </Text>
+          <Button
+            onPress={handleRefresh}
+            variant="outlined"
+            size="$4"
+          >
+            <Ionicons name="refresh" size={20} />
+            <Text>Intentar nuevamente</Text>
+          </Button>
         </YStack>
       </SafeAreaView>
     );
@@ -151,7 +179,7 @@ export default function DenunciaDetailScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
       <AppHeader
-        screenTitle={`${denuncia.numeroFolio}`}
+        screenTitle={`Folio #${denuncia.numeroFolio}`}
         screenSubtitle={getEstadoTexto(denuncia.estado)}
         screenIcon="document-text"
         showBackButton={true}
@@ -160,7 +188,18 @@ export default function DenunciaDetailScreen() {
         notificationCount={respuestasNoLeidas}
       />
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={{ flex: 1 }} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={['#E67E22']}
+            tintColor="#E67E22"
+          />
+        }
+      >
         <YStack gap="$4" p="$4">
 
           {/* Información principal */}
@@ -185,45 +224,58 @@ export default function DenunciaDetailScreen() {
               </Card>
             </XStack>
 
-            <Separator />
-
-            {/* Metadatos */}
+            {/* Información adicional */}
             <YStack gap="$2">
-              <XStack alignItems="center" gap="$2">
-                <Ionicons name="calendar" size={16} color="#667eea" />
-                <Text fontSize="$3" color="$textSecondary">
-                  Creada: {formatearFecha(denuncia.fechaCreacion)}
+              <XStack justifyContent="space-between">
+                <Text fontSize="$2" color="$textSecondary">Fecha de creación</Text>
+                <Text fontSize="$2" color="$textPrimary" fontWeight="500">
+                  {formatearFechaCompleta(denuncia.fechaCreacion)}
                 </Text>
               </XStack>
 
               {denuncia.categoria && (
-                <XStack alignItems="center" gap="$2">
-                  <Ionicons name="pricetag" size={16} color="#667eea" />
-                  <Text fontSize="$3" color="$textSecondary">
-                    Categoría: {denuncia.categoria}
-                  </Text>
-                </XStack>
-              )}
-
-              {denuncia.ubicacion && (
-                <XStack alignItems="center" gap="$2">
-                  <Ionicons name="location" size={16} color="#667eea" />
-                  <Text fontSize="$3" color="$textSecondary">
-                    {denuncia.ubicacion.direccion}
+                <XStack justifyContent="space-between">
+                  <Text fontSize="$2" color="$textSecondary">Categoría</Text>
+                  <Text fontSize="$2" color="$textPrimary" fontWeight="500">
+                    {denuncia.categoria.nombre}
                   </Text>
                 </XStack>
               )}
 
               {denuncia.departamentoAsignado && (
-                <XStack alignItems="center" gap="$2">
-                  <Ionicons name="business" size={16} color="#667eea" />
-                  <Text fontSize="$3" color="$textSecondary">
-                    {denuncia.departamentoAsignado}
+                <XStack justifyContent="space-between">
+                  <Text fontSize="$2" color="$textSecondary">Departamento</Text>
+                  <Text fontSize="$2" color="$textPrimary" fontWeight="500">
+                    {denuncia.departamentoAsignado.nombre}
                   </Text>
                 </XStack>
               )}
+
+              <XStack justifyContent="space-between">
+                <Text fontSize="$2" color="$textSecondary">Prioridad</Text>
+                <Text fontSize="$2" color="$textPrimary" fontWeight="500">
+                  {denuncia.prioridad.charAt(0).toUpperCase() + denuncia.prioridad.slice(1)}
+                </Text>
+              </XStack>
             </YStack>
           </Card>
+
+          {/* Ubicación */}
+          {denuncia.ubicacion && (
+            <Card elevate p="$4" gap="$3">
+              <H5 color="$textPrimary">📍 Ubicación</H5>
+              <Text fontSize="$3" color="$textSecondary">
+                {denuncia.ubicacion.direccion}
+              </Text>
+              {(denuncia.ubicacion.latitud && denuncia.ubicacion.longitud) && (
+                <XStack gap="$2">
+                  <Text fontSize="$2" color="$textSecondary">
+                    Coordenadas: {denuncia.ubicacion.latitud.toFixed(6)}, {denuncia.ubicacion.longitud.toFixed(6)}
+                  </Text>
+                </XStack>
+              )}
+            </Card>
+          )}
 
           {/* Evidencias iniciales */}
           {denuncia.evidenciasIniciales && denuncia.evidenciasIniciales.length > 0 && (
@@ -266,23 +318,25 @@ export default function DenunciaDetailScreen() {
             </XStack>
 
             {denuncia.respuestas.length === 0 ? (
-              <YStack alignItems="center" py="$6" gap="$2">
+              <YStack alignItems="center" py="$4" gap="$2">
                 <Ionicons name="chatbubble-outline" size={48} color="#ccc" />
-                <Text fontSize="$4" color="$textSecondary" textAlign="center">
-                  Aún no hay respuestas
-                </Text>
                 <Text fontSize="$3" color="$textSecondary" textAlign="center">
-                  Te notificaremos cuando recibas una respuesta oficial
+                  Aún no hay respuestas de la municipalidad
+                </Text>
+                <Text fontSize="$2" color="$textSecondary" textAlign="center">
+                  Te notificaremos cuando recibas una respuesta
                 </Text>
               </YStack>
             ) : (
               <YStack gap="$3">
-                {denuncia.respuestas.map((respuesta) => (
+                {denuncia.respuestas.map((respuesta, index) => (
                   <RespuestaItem
                     key={respuesta.id}
                     respuesta={respuesta}
-                    onMarcarComoLeida={handleMarcarRespuestaLeida}
+                    isFirst={index === 0}
+                    isLast={index === denuncia.respuestas.length - 1}
                     onVerEvidencia={handleVerEvidencia}
+                    onMarcarLeida={() => handleMarcarRespuestaLeida(respuesta.id)}
                   />
                 ))}
               </YStack>
@@ -292,23 +346,25 @@ export default function DenunciaDetailScreen() {
           {/* Encuesta de satisfacción */}
           {denuncia.estado === 'resuelto' && (
             <SatisfactionSurvey
-              denunciaId={denuncia.id}
               currentRating={denuncia.satisfaccionCiudadano}
-              onRatingChange={handleSatisfactionRating}
+              onRatingSubmit={handleSatisfactionRating}
             />
           )}
+
         </YStack>
       </ScrollView>
 
-      {/* Modal de visualización de evidencias */}
-      <EvidenciaViewerModal
-        visible={evidenciaVisible}
-        evidencia={evidenciaSeleccionada}
-        onClose={() => {
-          setEvidenciaVisible(false);
-          setEvidenciaSeleccionada(null);
-        }}
-      />
+      {/* Modal para ver evidencias */}
+      {evidenciaSeleccionada && (
+        <EvidenciaViewerModal
+          visible={evidenciaVisible}
+          evidencia={evidenciaSeleccionada}
+          onClose={() => {
+            setEvidenciaVisible(false);
+            setEvidenciaSeleccionada(null);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }

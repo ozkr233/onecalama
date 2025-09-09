@@ -160,7 +160,7 @@ export default function DenunciasScreen() {
 
       // Mostrar mensaje de éxito con el código real de Django
       Alert.alert(
-        '✅ ¡Denuncia Enviada a Django!',
+        '✅ ¡Denuncia Enviada Exitosamente!',
         `Tu denuncia ha sido registrada exitosamente:\n\n` +
         `📄 Código: ${nuevaPublicacion.codigo}\n` +
         `🏷️ Título: ${nuevaPublicacion.titulo}\n` +
@@ -213,7 +213,7 @@ export default function DenunciasScreen() {
         <AppHeader screenTitle="Nueva Denuncia" />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <Text style={{ fontSize: 18, color: '#3B82F6', marginBottom: 10 }}>
-            🔄 Conectando con Django...
+            🔄 Conectando con el servidor...
           </Text>
           <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
             Cargando categorías y departamentos desde tu servidor

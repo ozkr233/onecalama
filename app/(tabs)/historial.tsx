@@ -32,10 +32,11 @@ export default function HistorialScreen() {
   } = useHistorial();
 
   // Navegación a detalle
-  const handleNavigateToDetail = (denunciaId: string) => {
-    console.log('🔗 [SCREEN] Navegando a detalle:', denunciaId);
-    router.push(`/denuncias/${denunciaId}`);
-  };
+const handleNavigateToDetail = (denunciaId: string) => {
+  console.log('🔗 [SCREEN] Navegando a detalle:', denunciaId);
+  // CAMBIO: Corregir la ruta de navegación
+  router.push(`/denuncia/${denunciaId}`); // Era: `/denuncias/${denunciaId}`
+};
 
   // Componente de indicador de conexión
   const ConnectionIndicator = () => (

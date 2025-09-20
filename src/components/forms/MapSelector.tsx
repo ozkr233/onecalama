@@ -8,14 +8,14 @@ import { Ionicons } from '@expo/vector-icons';
 
 interface MapSelectorProps {
   onLocationSelect: (location: {
-    latitude: number;
-    longitude: number;
+    latitud: number;
+    longitud: number;
     address?: string;
   }) => void;
   onClose: () => void;
   initialLocation?: {
-    latitude: number;
-    longitude: number;
+    latitud: number;
+    longitud: number;
   };
 }
 
@@ -33,8 +33,8 @@ const MapSelector: React.FC<MapSelectorProps> = ({
   initialLocation,
 }) => {
   const [selectedLocation, setSelectedLocation] = useState<{
-    latitude: number;
-    longitude: number;
+    latitud: number;
+    longitud: number;
   } | null>(initialLocation || null);
 
   const [region, setRegion] = useState<Region>(CALAMA_DEFAULT);
@@ -43,7 +43,8 @@ const MapSelector: React.FC<MapSelectorProps> = ({
   useEffect(() => {
     if (initialLocation) {
       setRegion({
-        ...initialLocation,
+        latitude: initialLocation.latitud,
+        longitude: initialLocation.longitud,
         latitudeDelta: 0.02,
         longitudeDelta: 0.02,
       });
@@ -54,7 +55,6 @@ const MapSelector: React.FC<MapSelectorProps> = ({
   const getCurrentLocation = async () => {
     setIsGettingLocation(true);
     try {
-      // Solicitar permisos de ubicación
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
@@ -66,7 +66,6 @@ const MapSelector: React.FC<MapSelectorProps> = ({
         return;
       }
 
-      // Obtener ubicación actual
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
@@ -81,7 +80,7 @@ const MapSelector: React.FC<MapSelectorProps> = ({
       };
 
       setRegion(newRegion);
-      setSelectedLocation({ latitude, longitude });
+      setSelectedLocation({ latitud: latitude, longitud: longitude });
 
     } catch (error) {
       Alert.alert(
@@ -95,7 +94,7 @@ const MapSelector: React.FC<MapSelectorProps> = ({
 
   const handleMapPress = (event: any) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
-    setSelectedLocation({ latitude, longitude });
+    setSelectedLocation({ latitud: latitude, longitud: longitude });
   };
 
   const handleConfirmLocation = async () => {
@@ -105,10 +104,9 @@ const MapSelector: React.FC<MapSelectorProps> = ({
     }
 
     try {
-      // Intentar obtener la dirección usando geocodificación inversa
       const addresses = await Location.reverseGeocodeAsync({
-        latitude: selectedLocation.latitude,
-        longitude: selectedLocation.longitude,
+        latitude: selectedLocation.latitud,
+        longitude: selectedLocation.longitud,
       });
 
       let address = '';
@@ -122,7 +120,6 @@ const MapSelector: React.FC<MapSelectorProps> = ({
         address: address || 'Ubicación seleccionada en mapa',
       });
     } catch (error) {
-      // Si falla la geocodificación, enviar solo las coordenadas
       onLocationSelect({
         ...selectedLocation,
         address: 'Ubicación seleccionada en mapa',
@@ -172,7 +169,10 @@ const MapSelector: React.FC<MapSelectorProps> = ({
         >
           {selectedLocation && (
             <Marker
-              coordinate={selectedLocation}
+              coordinate={{
+                latitude: selectedLocation.latitud,
+                longitude: selectedLocation.longitud,
+              }}
               title="Ubicación seleccionada"
               description="Ubicación de la denuncia"
               pinColor="#E67E22"
@@ -207,10 +207,10 @@ const MapSelector: React.FC<MapSelectorProps> = ({
               Ubicación seleccionada:
             </Text>
             <Text fontSize="$3" color="$textSecondary">
-              Lat: {selectedLocation.latitude.toFixed(6)}
+              Lat: {selectedLocation.latitud.toFixed(6)}
             </Text>
             <Text fontSize="$3" color="$textSecondary">
-              Lng: {selectedLocation.longitude.toFixed(6)}
+              Lng: {selectedLocation.longitud.toFixed(6)}
             </Text>
           </YStack>
         </Card>

@@ -12,9 +12,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#E67E22"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.municipalidadcalama.onecalama",
@@ -23,6 +21,9 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "OneCalama necesita acceso a tu ubicación para permitirte seleccionar la ubicación de tus denuncias ciudadanas.",
         "NSCameraUsageDescription": "OneCalama necesita acceso a tu cámara para tomar fotos de evidencias que ayuden a procesar tu denuncia más rápidamente.",
         "NSPhotoLibraryUsageDescription": "OneCalama necesita acceso a tu galería de fotos para seleccionar evidencias que acompañen tu denuncia."
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyAozvtu9ccFwLRTNyiIHXO52bvpAZhFs-w"
       }
     },
     "android": {
@@ -38,7 +39,12 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "ACCESS_MEDIA_LOCATION"
-      ]
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "TU_API_KEY_AQUI"
+        }
+      }
     },
     "web": {
       "bundler": "metro",

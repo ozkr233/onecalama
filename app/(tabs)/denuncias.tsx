@@ -239,7 +239,7 @@ export default function DenunciasScreen() {
         loading={loading}
         departamentos={departamentos}
         categorias={categorias}
-        juntasVecinales={juntasVecinales}
+        juntasVecinales={juntasVecinales} 
       />
     </SafeAreaView>
   );

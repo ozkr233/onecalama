@@ -274,7 +274,7 @@ export default function AnuncioCard({ anuncio, isOffline = false }: AnuncioCardP
           {isTextLong && (
             <Button
               size="$2"
-              variant="ghost"
+              variant="outlined"
               color="$primary"
               alignSelf="flex-start"
               onPress={() => setExpanded(v => !v)}

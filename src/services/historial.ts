@@ -60,28 +60,35 @@ class HistorialService {
       console.log('🔍 [HISTORIAL] URL construida:', url);
       
       const response = await apiService.get(url, true);
+      // Asignar tipo explícito para evitar errores de 'unknown'
+      const respObj = response as { results?: any[]; count?: number } | any[];
       console.log('📡 [HISTORIAL] Respuesta recibida:', {
-        hasResults: !!response.results,
-        resultsLength: response.results?.length || 0,
-        isArray: Array.isArray(response),
-        arrayLength: Array.isArray(response) ? response.length : 0,
-        totalCount: response.count
+        hasResults: Array.isArray(respObj) ? false : !!respObj.results,
+        resultsLength: Array.isArray(respObj) ? respObj.length : respObj.results?.length || 0,
+        isArray: Array.isArray(respObj),
+        arrayLength: Array.isArray(respObj) ? respObj.length : 0,
+        totalCount: Array.isArray(respObj) ? respObj.length : respObj.count
       });
       
       // 4. Extraer publicaciones (usar .results como en tu código anterior)
-      const publicaciones = response.results || response || [];
+      const publicaciones: any[] = Array.isArray(respObj)
+        ? respObj
+        : Array.isArray(respObj.results)
+          ? respObj.results
+          : [];
       console.log('📋 [HISTORIAL] Publicaciones del usuario obtenidas:', publicaciones.length);
-      
+
       // 5. Debug: Mostrar estructura de primera publicación
       if (publicaciones.length > 0) {
+        const primeraPublicacion = publicaciones[0];
         console.log('🔍 [HISTORIAL] Estructura de primera publicación:', {
-          id: publicaciones[0].id,
-          codigo: publicaciones[0].codigo,
-          titulo: publicaciones[0].titulo?.substring(0, 30),
-          usuario: publicaciones[0].usuario,
-          situacion: publicaciones[0].situacion,
-          categoria: publicaciones[0].categoria,
-          keys: Object.keys(publicaciones[0])
+          id: primeraPublicacion.id,
+          codigo: primeraPublicacion.codigo,
+          titulo: primeraPublicacion.titulo?.substring(0, 30),
+          usuario: primeraPublicacion.usuario,
+          situacion: primeraPublicacion.situacion,
+          categoria: primeraPublicacion.categoria,
+          keys: Object.keys(primeraPublicacion)
         });
       }
       
@@ -89,7 +96,7 @@ class HistorialService {
       const historial = publicaciones.map((pub: any) => this.transformarAHistorial(pub));
       
       // 7. Ordenar por fecha (más recientes primero)
-      historial.sort((a, b) => new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime());
+      historial.sort((a: { fechaCreacion: string | number | Date; }, b: { fechaCreacion: string | number | Date; }) => new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime());
       
       console.log('🎉 [HISTORIAL] Historial procesado exitosamente:', historial.length);
       return historial;
@@ -226,7 +233,8 @@ class HistorialService {
         console.log('🔑 [HISTORIAL] Buscando usuario por RUT:', userInfo.rut);
         
         const usuarios = await apiService.get('/usuarios/', true);
-        const usuariosList = usuarios.results || usuarios;
+        const usuariosObj = usuarios as { results?: any[] } | any[];
+        const usuariosList = Array.isArray(usuariosObj) ? usuariosObj : usuariosObj.results || [];
         
         const usuario = usuariosList.find((u: any) => u.rut === userInfo.rut);
         if (usuario?.id) {
@@ -301,7 +309,7 @@ class HistorialService {
         fechaResolucion: publicacion.fecha_resolucion || null,
         ubicacion: {
           direccion: direccion,
-          coordenadas: this.extraerCoordenadas(publicacion),
+          coordenadas: this.extraerCoordenadas(publicacion) ?? undefined,
           referencias: publicacion.referencias || ''
         },
         evidencias: this.transformarEvidencias(publicacion.evidencias || publicacion.evidencia_set || []),
@@ -465,6 +473,198 @@ private mapearEstado(estado?: string): HistorialDenuncia['estado'] {
     
     return 'documento';
   }
+
+  // src/services/historial.ts - VERSIÓN CON DEBUGGING MEJORADO PARA COORDENADAS
+
+// Función para debug de coordenadas - agregar esta función al servicio existente
+private extraerCoordenadas(publicacion: any): { lat: number; lng: number } | null {
+  console.log('🗺️ [HISTORIAL] Extrayendo coordenadas de publicación:', {
+    id: publicacion?.id,
+    latitud: publicacion?.latitud,
+    longitud: publicacion?.longitud,
+    lat: publicacion?.lat,
+    lng: publicacion?.lng,
+    lon: publicacion?.lon,
+    allKeys: publicacion ? Object.keys(publicacion) : 'No hay publicacion',
+    coordenadasDirectas: {
+      latitud_valor: publicacion?.latitud,
+      latitud_tipo: typeof publicacion?.latitud,
+      longitud_valor: publicacion?.longitud,
+      longitud_tipo: typeof publicacion?.longitud
+    }
+  });
+
+  const lat = publicacion?.latitud || publicacion?.lat;
+  const lng = publicacion?.longitud || publicacion?.lng || publicacion?.lon;
+  
+  console.log('🎯 [HISTORIAL] Valores extraídos para coordenadas:', {
+    lat_raw: lat,
+    lng_raw: lng,
+    lat_tipo: typeof lat,
+    lng_tipo: typeof lng,
+    lat_null: lat == null,
+    lng_null: lng == null
+  });
+  
+  if (lat != null && lng != null) {
+    const coords = {
+      lat: typeof lat === 'string' ? parseFloat(lat) : lat,
+      lng: typeof lng === 'string' ? parseFloat(lng) : lng
+    };
+    
+    console.log('✅ [HISTORIAL] Coordenadas procesadas exitosamente:', coords);
+    return coords;
+  }
+  
+  console.warn('⚠️ [HISTORIAL] No se pudieron extraer coordenadas válidas');
+  return null;
+}
+
+// Función mejorada para construir dirección con debugging
+private construirDireccion(publicacion: any): string {
+  console.log('🏠 [HISTORIAL] Construyendo dirección de publicación:', {
+    id: publicacion?.id,
+    nombre_calle: publicacion?.nombre_calle,
+    numero_calle: publicacion?.numero_calle,
+    villa: publicacion?.junta_vecinal?.villa,
+    ubicacion_campo: publicacion?.ubicacion
+  });
+
+  const partes = [];
+  
+  if (publicacion?.nombre_calle) {
+    partes.push(publicacion.nombre_calle);
+  }
+  
+  if (publicacion?.numero_calle) {
+    partes.push(publicacion.numero_calle.toString());
+  }
+  
+  // Agregar información de junta vecinal si existe
+  if (publicacion?.junta_vecinal?.villa) {
+    partes.push(publicacion.junta_vecinal.villa);
+  }
+  
+  // Si hay un campo 'ubicacion' directo, usarlo también
+  if (publicacion?.ubicacion && !partes.includes(publicacion.ubicacion)) {
+    partes.push(publicacion.ubicacion);
+  }
+  
+  const direccionFinal = partes.length > 0 ? partes.join(' ') : 'Dirección no especificada';
+  
+  console.log('📍 [HISTORIAL] Dirección construida:', {
+    partes,
+    direccionFinal
+  });
+  
+  return direccionFinal;
+}
+
+// Función mejorada para transformar con debugging extenso
+private transformarAHistorial(publicacion: any): HistorialDenuncia {
+  console.log('🔄 [HISTORIAL] === INICIO TRANSFORMACIÓN ===');
+  console.log('🔍 [HISTORIAL] Datos completos de publicación recibida:', {
+    id: publicacion?.id,
+    codigo: publicacion?.codigo,
+    titulo: publicacion?.titulo,
+    descripcion: publicacion?.descripcion?.substring(0, 50) + '...',
+    latitud: publicacion?.latitud,
+    longitud: publicacion?.longitud,
+    nombre_calle: publicacion?.nombre_calle,
+    numero_calle: publicacion?.numero_calle,
+    ubicacion: publicacion?.ubicacion,
+    junta_vecinal: publicacion?.junta_vecinal,
+    situacion: publicacion?.situacion,
+    categoria: publicacion?.categoria,
+    allKeys: publicacion ? Object.keys(publicacion).sort() : 'No hay publicacion'
+  });
+
+  // Validar que publicacion no sea null/undefined
+  if (!publicacion) {
+    console.error('❌ [HISTORIAL] Publicación es null/undefined');
+    throw new Error('Datos de publicación inválidos');
+  }
+
+  // Extraer coordenadas con debugging
+  const coordenadas = this.extraerCoordenadas(publicacion);
+  
+  // Construir dirección con debugging
+  const direccion = this.construirDireccion(publicacion);
+
+  // Extraer nombres de situación y categoría
+  const situacionNombre = typeof publicacion.situacion === 'object' 
+    ? publicacion.situacion?.nombre 
+    : publicacion.situacion;
+
+  const categoriaNombre = typeof publicacion.categoria === 'object'
+    ? publicacion.categoria?.nombre
+    : publicacion.categoria;
+
+  console.log('🎯 [HISTORIAL] Datos procesados para ubicación:', {
+    direccion,
+    coordenadas,
+    situacionNombre,
+    categoriaNombre
+  });
+
+  try {
+    const resultado: HistorialDenuncia = {
+      id: publicacion.id?.toString() || '',
+      codigo: publicacion.codigo || `P-${publicacion.id}`,
+      titulo: publicacion.titulo || 'Sin título',
+      descripcion: publicacion.descripcion || 'Sin descripción',
+      categoria: categoriaNombre || 'Sin categoría',
+      estado: this.mapearEstado(situacionNombre),
+      prioridad: this.mapearPrioridad(publicacion.prioridad),
+      fechaCreacion: publicacion.fecha_publicacion || new Date().toISOString(),
+      fechaActualizacion: publicacion.fecha_actualizacion || publicacion.fecha_publicacion,
+      fechaResolucion: publicacion.fecha_resolucion || null,
+      ubicacion: {
+        direccion: direccion,
+        coordenadas: coordenadas,
+        referencias: publicacion.referencias || ''
+      },
+      evidencias: this.transformarEvidencias(publicacion.evidencias || publicacion.evidencia_set || []),
+      respuestas: this.transformarRespuestas(publicacion.respuestas || []),
+      satisfaccionCiudadano: publicacion.satisfaccion_ciudadano || null,
+      comentarioSatisfaccion: publicacion.comentario_satisfaccion || null,
+      departamentoAsignado: this.extraerDepartamento(publicacion),
+      tiempoRespuesta: this.calcularTiempoRespuesta(
+        publicacion.fecha_publicacion,
+        publicacion.fecha_primera_respuesta
+      ),
+      
+      // Campos adicionales del backend para debugging
+      nombreCalle: publicacion.nombre_calle || null,
+      numeroCalle: publicacion.numero_calle || null,
+      juntaVecinal: publicacion.junta_vecinal?.nombre_junta || publicacion.junta_vecinal?.villa || null,
+      fechaPublicacion: publicacion.fecha_publicacion || null,
+      
+      // ✅ NUEVO: Agregar coordenadas directas para debugging
+      latitud: publicacion.latitud || null,
+      longitud: publicacion.longitud || null,
+    };
+
+    console.log('✅ [HISTORIAL] Publicación transformada exitosamente:', {
+      id: resultado.id,
+      codigo: resultado.codigo,
+      titulo: resultado.titulo.substring(0, 30),
+      ubicacion: resultado.ubicacion,
+      coordenadas: resultado.ubicacion?.coordenadas,
+      latitud_directa: (resultado as any).latitud,
+      longitud_directa: (resultado as any).longitud
+    });
+    
+    console.log('🔄 [HISTORIAL] === FIN TRANSFORMACIÓN ===');
+
+    return resultado;
+
+  } catch (error: any) {
+    console.error('❌ [HISTORIAL] Error transformando publicación:', error);
+    console.error('❌ [HISTORIAL] Datos recibidos completos:', JSON.stringify(publicacion, null, 2));
+    throw new Error(`Error transformando datos: ${error.message}`);
+  }
+}
 
   /**
    * Transformar respuestas del sistema (no municipales)
@@ -642,6 +842,7 @@ private mapearEstado(estado?: string): HistorialDenuncia['estado'] {
     };
   }
 }
+
 
 // Exportar instancia singleton
 export const historialService = new HistorialService();

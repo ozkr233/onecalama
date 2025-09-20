@@ -37,6 +37,9 @@ const ERROR_MESSAGES = {
 };
 
 class ApiService {
+  patch(arg0: string, arg1: {}, arg2: boolean) {
+    throw new Error('Method not implemented.');
+  }
   private cache = new Map<string, CacheItem<any>>();
   private defaultTimeout = ACTIVE_CONFIG.timeout;
 

@@ -94,23 +94,36 @@ const DenunciaForm: React.FC<DenunciaFormProps> = ({
     onFormDataChange({ ...formData, [field]: value });
   };
 
-  const handleLocationSelect = (location: { latitude: number; longitude: number; address?: string }) => {
-    const locationData: LocationData = {
-      latitud: location.latitude,
-      longitud: location.longitude,
-      address: location.address
-    };
-    onFormDataChange({
-      ...formData,
-      ubicacion: locationData,
-      direccion: location.address || formData.direccion
-    });
-    setIsMapVisible(false);
+const handleLocationSelect = (location: {
+  latitud?: number;
+  longitud?: number;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+}) => {
+  const lat = location.latitud ?? location.latitude;
+  const lng = location.longitud ?? location.longitude;
+
+  if (typeof lat !== 'number' || typeof lng !== 'number') {
+    // opcional: mostrar alerta/log si algo raro llega
+    console.warn('Ubicación inválida recibida:', location);
+    return;
+  }
+
+  const locationData: LocationData = {
+    latitud: lat,
+    longitud: lng,
+    address: location.address,
   };
 
-  const handleAISuggestion = (suggestions: Partial<DenunciaFormData>) => {
-    onFormDataChange({ ...formData, ...suggestions });
-  };
+  onFormDataChange({
+    ...formData,
+    ubicacion: locationData,
+    direccion: location.address || formData.direccion,
+  });
+
+  setIsMapVisible(false);
+};
 
   // Validaciones
   const shouldShowAI = formData.titulo.length > 3 || formData.descripcion.length > 3;
@@ -283,11 +296,15 @@ const DenunciaForm: React.FC<DenunciaFormProps> = ({
           presentationStyle="fullScreen"
           onRequestClose={() => setIsMapVisible(false)}
         >
-          <MapSelector
-            onLocationSelect={handleLocationSelect}
-            onClose={() => setIsMapVisible(false)}
-            initialLocation={formData.ubicacion ? { latitude: formData.ubicacion.latitud, longitude: formData.ubicacion.longitud } : undefined}
-          />
+        <MapSelector
+          onLocationSelect={handleLocationSelect}
+          onClose={() => setIsMapVisible(false)}
+          initialLocation={
+            formData.ubicacion
+              ? { latitud: formData.ubicacion.latitud, longitud: formData.ubicacion.longitud }
+              : undefined
+          }
+        />
         </Modal>
       </YStack>
     </ScrollView>

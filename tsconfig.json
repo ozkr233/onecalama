@@ -1,25 +1,84 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    // === CONFIGURACIONES BÁSICAS ===
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleDetection": "force",
+    "allowJs": true,
+    "checkJs": false,
+    "outDir": "./dist",
+    "declaration": false,
+    "sourceMap": true,  
+    
+    // === CONFIGURACIONES DE TIPO ===
     "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false,
+    
+    // === CONFIGURACIONES DE INTEROP ===
     "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    
+    // === CONFIGURACIONES DE JSX ===
     "jsx": "react-native",
-    "lib": ["dom", "esnext"],
-    "moduleResolution": "node",
+    "jsxImportSource": "react",
+    
+    // === CONFIGURACIONES DE RESOLUCIÓN ===
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": false,
+    
+    // === CONFIGURACIONES DE COMPILACIÓN ===
     "noEmit": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
+    "skipDefaultLibCheck": true,
+    
+    // === CONFIGURACIONES DE PATHS ===
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@/components/*": ["./src/components/*"],
-      "@/services/*": ["./src/services/*"],
-      "@/hooks/*": ["./src/hooks/*"],
-      "@/types/*": ["./src/types/*"],
-      "@/constants/*": ["./src/constants/*"],
-      "@/utils/*": ["./src/utils/*"]
-    }
+      "@components/*": ["./src/components/*"],
+      "@types/*": ["./src/types/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@hooks/*": ["./src/hooks/*"],
+      "@services/*": ["./src/services/*"],
+      "@constants/*": ["./src/constants/*"],
+      "@assets/*": ["./assets/*"]
+    },
+    
+    // === CONFIGURACIONES MODERNAS ===
+    "useUnknownInCatchVariables": false,
+    "verbatimModuleSyntax": false,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    
+    // === CONFIGURACIONES DE DESARROLLO ===
+    "incremental": true,
+    "composite": false
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "babel.config.js",
+    "metro.config.js",
+    ".expo",
+    "dist",
+    "build"
+  ]
 }

@@ -1,51 +1,142 @@
-// Constantes para la API
-
+// src/constants/api.ts - ACTUALIZADO CON RESPUESTAS MUNICIPALES
+// URLs base según ambiente - CORREGIDAS
 export const API_CONFIG = {
-  BASE_URL: 'https://backendmunicipalidadawstid-production.up.railway.app/api/v1',
-  TIMEOUT: 10000, // 10 segundos
-  RETRY_ATTEMPTS: 3,
-} as const;
+  development: {
+    baseURL: 'http://192.168.8.103:8000/api/v1',  // ← AGREGADO /v1
+    timeout: 10000,
+    retries: 2
+  },
+  staging: {
+    baseURL: 'https://staging-api.onecalama.cl/api/v1',  // ← AGREGADO /v1
+    timeout: 8000,
+    retries: 3
+  },
+  production: {
+    baseURL: 'https://api.onecalama.cl/api/v1',  // ← AGREGADO /v1
+    timeout: 8000,
+    retries: 2
+  }
+};
 
+// Ambiente actual
+export const CURRENT_ENV = process.env.NODE_ENV === 'production' ? 'production' :
+                          process.env.EXPO_PUBLIC_ENV === 'staging' ? 'staging' :
+                          'development';
+
+// Configuración activa
+export const ACTIVE_CONFIG = API_CONFIG[CURRENT_ENV];
+
+// Endpoints principales - CORREGIDOS SEGÚN TU BACKEND
 export const ENDPOINTS = {
-  // Autenticación
+  // Autenticación - BASADO EN TUS URLS
   AUTH: {
-    LOGIN: '/token/',
-    REFRESH: '/token/refresh/',
-    REGISTER: '/registro/',
+    LOGIN: '/token/',                    // ← v1/token/
+    REGISTER: '/registro/',              // ← v1/registro/
+    REFRESH: '/token/refresh/',          // ← v1/token/refresh/
+    LOGOUT: '/logout/',                  // Si tienes endpoint de logout
+    PROFILE: '/usuarios/',               // Endpoint del perfil de usuario
   },
-  
-  // Recursos principales
-  PUBLICACIONES: '/publicaciones/',
-  DEPARTAMENTOS: '/departamentos/',
-  CATEGORIAS: '/categorias/',
-  JUNTAS_VECINALES: '/juntas-vecinales/',
-  SITUACIONES: '/situaciones/',
-  EVIDENCIAS: '/evidencias/',
-  ANUNCIOS: '/anuncios/',
-  
-  // Estadísticas
+
+  // Datos maestros - NOMBRES EXACTOS DE TU BACKEND
+  CATEGORIAS: '/categorias/',                        // ✅ v1/categorias/
+  DEPARTAMENTOS: '/departamentos-municipales/',      // ✅ v1/departamentos-municipales/
+  JUNTAS_VECINALES: '/juntas-vecinales/',           // ✅ v1/juntas-vecinales/
+  SITUACIONES: '/situaciones-publicaciones/',       // ✅ v1/situaciones-publicaciones/
+
+  // Publicaciones (denuncias) - BASADO EN TU VIEWSET
+  PUBLICACIONES: '/publicaciones/',                  // ✅ v1/publicaciones/
+  PUBLICACION_DETALLE: (id: number) => `/publicaciones/${id}/`,
+
+  // Evidencias - EXACTO DE TU BACKEND
+  EVIDENCIAS: '/evidencias/',                        // ✅ v1/evidencias/
+  SUBIR_EVIDENCIA: '/evidencias/',                   // POST a evidencias/
+
+  // Anuncios - EXACTO DE TU BACKEND
+  ANUNCIOS: '/anuncios-municipales/',                // ✅ v1/anuncios-municipales/
+  ANUNCIO_DETALLE: (id: number) => `/anuncios-municipales/${id}/`,
+
+  // ✅ NUEVO: Respuestas municipales - EXACTO DE TU BACKEND
+  RESPUESTAS_MUNICIPALES: '/respuestas-municipales/', // ✅ v1/respuestas-municipales/
+  RESPUESTA_DETALLE: (id: number) => `/respuestas-municipales/${id}/`,
+
+  // Estadísticas - BASADO EN TUS URLS
   ESTADISTICAS: {
-    RESUMEN: '/resumen-estadisticas/',
-    POR_CATEGORIA: '/publicaciones-por-categoria/',
-    POR_MES: '/publicaciones-por-mes-y-categoria/',
-    RESUELTOS_MES: '/resueltos-por-mes/',
+    RESUMEN: '/resumen-estadisticas/',               // ✅ v1/resumen-estadisticas/
+    POR_CATEGORIA: '/publicaciones-por-categoria/',  // ✅ v1/publicaciones-por-categoria/
+    POR_MES: '/publicaciones-por-mes-y-categoria/',  // ✅ v1/publicaciones-por-mes-y-categoria/
+    RESUELTOS: '/resueltos-por-mes/',               // ✅ v1/resueltos-por-mes/
+    TASA_RESOLUCION: '/tasa-resolucion-departamento/', // ✅ v1/tasa-resolucion-departamento/
+    POR_JUNTA: '/publicaciones-por-junta-vecinal/', // ✅ v1/publicaciones-por-junta-vecinal/
+    // ✅ NUEVO: Estadísticas de respuestas
+    RESPUESTAS: '/estadisticas-respuestas/',         // ✅ v1/estadisticas-respuestas/
   },
-  
-  // Utilidades
-  EXPORT_EXCEL: '/export-to-excel/',
+
+  // Reportes - EXACTOS DE TU BACKEND
+  REPORTES: {
+    EXCEL: '/export-to-excel/',                      // ✅ v1/export-to-excel/
+    PDF: '/generate-pdf-report/',                    // ✅ v1/generate-pdf-report/
+  },
+
+  // Utilidades (puedes agregar si las tienes)
+  HEALTH: '/health/',                                // Si tienes health check
+  VERSION: '/version/',                              // Si tienes endpoint de versión
 } as const;
 
-export const HTTP_STATUS = {
-  OK: 200,
-  CREATED: 201,
-  BAD_REQUEST: 400,
-  UNAUTHORIZED: 401,
-  FORBIDDEN: 403,
-  NOT_FOUND: 404,
-  INTERNAL_SERVER_ERROR: 500,
+// Headers comunes - ACTUALIZADOS PARA DJANGO
+export const COMMON_HEADERS = {
+  'Content-Type': 'application/json',
+  'Accept': 'application/json',
+  'X-Client-Version': process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0',
+  'X-Platform': 'mobile',
+  'X-Requested-With': 'XMLHttpRequest',  // ← Para Django CSRF si es necesario
 } as const;
 
-export const REQUEST_HEADERS = {
-  CONTENT_TYPE_JSON: 'application/json',
-  CONTENT_TYPE_FORM_DATA: 'multipart/form-data',
+// Configuraciones de cache (TTL en milisegundos)
+export const CACHE_CONFIG = {
+  // Datos que cambian poco - cache largo
+  CATEGORIAS: 30 * 60 * 1000,        // 30 minutos
+  DEPARTAMENTOS: 30 * 60 * 1000,     // 30 minutos  
+  JUNTAS_VECINALES: 15 * 60 * 1000,  // 15 minutos
+  SITUACIONES: 30 * 60 * 1000,       // 30 minutos
+
+  // Datos que cambian seguido - cache corto
+  PUBLICACIONES: 5 * 60 * 1000,      // 5 minutos
+  ANUNCIOS: 10 * 60 * 1000,          // 10 minutos
+  // ✅ NUEVO: Cache para respuestas municipales
+  RESPUESTAS_MUNICIPALES: 5 * 60 * 1000, // 5 minutos
+
+  // Estadísticas - cache medio
+  ESTADISTICAS: 15 * 60 * 1000,      // 15 minutos
+} as const;
+
+// Configuraciones de paginación
+export const PAGINATION_CONFIG = {
+  DEFAULT_PAGE_SIZE: 20,
+  MAX_PAGE_SIZE: 100,
+  PREFETCH_PAGES: 2, // Páginas a precargar
+} as const;
+
+// Configuraciones de retry
+export const RETRY_CONFIG = {
+  MAX_RETRIES: 3,
+  RETRY_DELAY: 1000, // ms
+  BACKOFF_MULTIPLIER: 2,
+  RETRY_ON_STATUS: [408, 429, 500, 502, 503, 504],
+} as const;
+
+// ✅ NUEVO: Tipos para filtros de respuestas municipales
+export const RESPUESTAS_FILTERS = {
+  TODAS: 'todas',
+  PUNTUADAS: 'puntuadas', 
+  SIN_PUNTUAR: 'sin_puntuar',
+  POR_DEPARTAMENTO: 'por_departamento',
+  POR_FUNCIONARIO: 'por_funcionario',
+} as const;
+
+// ✅ NUEVO: Configuraciones específicas para respuestas municipales
+export const RESPUESTAS_CONFIG = {
+  PUNTUACION_MIN: 1,
+  PUNTUACION_MAX: 5,
+  ITEMS_PER_PAGE: 15,
+  AUTO_REFRESH_INTERVAL: 5 * 60 * 1000, // 5 minutos
 } as const;

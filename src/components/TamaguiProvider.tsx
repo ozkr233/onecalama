@@ -1,3 +1,4 @@
+// src/components/TamaguiProvider.tsx
 import React from 'react'
 import { TamaguiProvider as TamaguiProviderOriginal } from 'tamagui'
 import config from '../tamagui.config'

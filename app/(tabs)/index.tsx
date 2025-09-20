@@ -1,326 +1,350 @@
+// app/(tabs)/index.tsx - PANTALLA PRINCIPAL ACTUALIZADA CON ANUNCIOS
 import React from 'react';
-import { Text, YStack, XStack, Button, Card, H2, H4, Paragraph } from 'tamagui';
-import { SafeAreaView, StatusBar } from 'react-native';
+import { Text, YStack, XStack, Button, Card, H4, H5 } from 'tamagui';
+import { SafeAreaView, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
+import AppHeader from '../../src/components/layout/AppHeader';
+import { WelcomeSection } from '../../src/components/ui/WelcomeSection';
+import AnuncioCard from '../../src/components/ui/AnuncioCard';
+import { useAuth } from '../../src/hooks/useAuth';
+import { useAnuncios } from '../../src/hooks/useAnuncios';
 
 export default function HomeScreen() {
-  return (
-    <>
-      <StatusBar backgroundColor="#1A237E" barStyle="light-content" />
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
+  const { anuncios, loading: anunciosLoading } = useAnuncios();
+  const [isConnected, setIsConnected] = React.useState(true); // Estado de conexión
+
+  // Si no está autenticado, mostrar mensaje de carga
+  if (!isAuthenticated) {
+    return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-        {/* Header */}
-        <YStack
-          bg="$municipal"
-          p="$4"
-          pb="$5"
-          style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 4,
-            elevation: 5,
-          }}
-        >
-          <XStack jc="space-between" ai="center">
-            <YStack>
-              <Text fontSize="$7" fontWeight="bold" color="white">
-                Denuncias Ciudadanas
-              </Text>
-              <Text fontSize="$4" color="rgba(255,255,255,0.9)">
-                Municipio de Calama
-              </Text>
-            </YStack>
-            <Ionicons name="notifications-outline" size={24} color="white" />
-          </XStack>
+        <YStack flex={1} justifyContent="center" alignItems="center" gap="$4">
+          <Text fontSize="$4" color="$textSecondary">
+            Verificando autenticación...
+          </Text>
         </YStack>
+      </SafeAreaView>
+    );
+  }
+  const anunciosRecientes = anuncios.slice(0, 1);
+  
 
-        <ScrollView style={{ flex: 1 }}>
-          <YStack p="$4" gap="$5">
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+      {/* Header con información de la app y usuario */}
+      <AppHeader
+        screenTitle="Inicio"
+        screenSubtitle="Panel principal"
+        screenIcon="home"
+        showAppInfo={true}
+        showLogout={true}
+        showNotifications={true}
+        notificationCount={0} // Aquí puedes conectar notificaciones reales
+      />
 
-            {/* Acciones Rápidas */}
-            <Card
-              bg="white"
-              p="$4"
-              br="$4"
-              style={{
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 3,
-              }}
-            >
-              <H4 mb="$4" color="$textPrimary">Acciones Rápidas</H4>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        <YStack p="$4" gap="$4">
+          {/* Sección de bienvenida personalizada */}
+          <WelcomeSection />
 
+          {/* Acciones Rápidas */}
+          <Card
+            bg="white"
+            p="$4"
+            borderRadius="$4"
+            shadowColor="#000"
+            shadowOffset={{ width: 0, height: 2 }}
+            shadowOpacity={0.1}
+            shadowRadius={4}
+            elevation={3}
+          >
+            <H4 mb="$4" color="$textPrimary" fontWeight="bold">
+              Acciones Rápidas
+            </H4>
+
+            <YStack gap="$3">
+              {/* Botón principal: Nueva Denuncia */}
+              <Button
+                size="$5"
+                bg="$primary"
+                color="white"
+                fontWeight="bold"
+                onPress={() => router.push('/denuncias')}
+                pressStyle={{ 
+                  bg: "$primaryDark", 
+                  scale: 0.98 
+                }}
+                shadowColor="$primary"
+                shadowOffset={{ width: 0, height: 4 }}
+                shadowOpacity={0.3}
+                shadowRadius={8}
+                elevation={8}
+              >
+                <XStack alignItems="center" gap="$3">
+                  <Ionicons name="add-circle" size={24} color="white" />
+                  <Text color="white" fontSize="$5" fontWeight="bold">
+                    Nueva Denuncia
+                  </Text>
+                </XStack>
+              </Button>
+
+              {/* Botones secundarios */}
               <XStack gap="$3">
-                {/* Botón Nueva Denuncia - Principal con relieve */}
                 <Button
-                  f={1}
-                  size="$5"
-                  bg="$primary"
+                  flex={1}
+                  size="$4"
+                  bg="$secondary"
                   color="white"
-                  fontWeight="bold"
-                  br="$3"
-                  h={80}
-                  onPress={() => console.log('Nueva denuncia')}
-                  style={{
-                    shadowColor: '#E67E22',
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 6,
-                    elevation: 8,
-                  }}
-                  pressStyle={{
-                    scale: 0.98,
-                    shadowOpacity: 0.2,
-                    elevation: 4,
+                  fontWeight="600"
+                  onPress={() => router.push('/historial')}
+                  pressStyle={{ 
+                    bg: "$secondaryDark", 
+                    scale: 0.98 
                   }}
                 >
-                  <YStack ai="center" gap="$2">
-                    <Ionicons name="add-circle" size={24} color="white" />
-                    <Text color="white" fontWeight="bold">Nueva Denuncia</Text>
-                  </YStack>
+                  <XStack alignItems="center" gap="$2">
+                    <Ionicons name="time" size={18} color="white" />
+                    <Text color="white" fontSize="$4" fontWeight="600">
+                      Historial
+                    </Text>
+                  </XStack>
                 </Button>
 
-                {/* Botón Mi Historial - Secundario con relieve */}
                 <Button
-                  f={1}
-                  size="$5"
-                  bg="white"
-                  borderColor="$secondary"
-                  borderWidth={2}
-                  br="$3"
-                  h={80}
-                  onPress={() => console.log('Mi historial')}
-                  style={{
-                    shadowColor: '#009688',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 4,
-                    elevation: 4,
-                  }}
-                  pressStyle={{
-                    scale: 0.98,
-                    backgroundColor: '#F0F9FF',
-                    shadowOpacity: 0.1,
-                    elevation: 2,
+                  flex={1}
+                  size="$4"
+                  bg="$info"
+                  color="white"
+                  fontWeight="600"
+                  onPress={() => router.push('/anuncios')}
+                  pressStyle={{ 
+                    bg: "#1976D2", 
+                    scale: 0.98 
                   }}
                 >
-                  <YStack ai="center" gap="$2">
-                    <Ionicons name="time-outline" size={24} color="#009688" />
-                    <Text color="$secondary" fontWeight="bold">Mi Historial</Text>
-                  </YStack>
+                  <XStack alignItems="center" gap="$2">
+                    <Ionicons name="megaphone" size={18} color="white" />
+                    <Text color="white" fontSize="$4" fontWeight="600">
+                      Anuncios
+                    </Text>
+                  </XStack>
                 </Button>
               </XStack>
-            </Card>
+            </YStack>
+          </Card>
 
-            {/* Actividad Reciente */}
-            <Card
-              bg="white"
-              p="$4"
-              br="$4"
-              style={{
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 3,
-              }}
-            >
-              <H4 mb="$4" color="$textPrimary">Actividad Reciente</H4>
+          {/* Estadísticas Rápidas */}
+          <Card
+            bg="white"
+            p="$4"
+            borderRadius="$4"
+            shadowColor="#000"
+            shadowOffset={{ width: 0, height: 2 }}
+            shadowOpacity={0.1}
+            shadowRadius={4}
+            elevation={3}
+          >
+            <H4 mb="$4" color="$textPrimary" fontWeight="bold">
+              Resumen
+            </H4>
 
-              <YStack gap="$3">
-                <Card
-                  bg="$statusInProgress"
-                  p="$3"
-                  br="$3"
-                  style={{
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 2,
-                    elevation: 2,
-                  }}
-                >
-                  <XStack jc="space-between" ai="center">
-                    <YStack f={1}>
-                      <Text fontWeight="600" color="$textPrimary">
-                        Bache en la vía
-                      </Text>
-                      <Text fontSize="$3" color="$textSecondary">
-                        Calle 18 de Sep, 16
-                      </Text>
-                    </YStack>
-                    <Card
-                      bg="#2196F3"
-                      px="$3"
-                      py="$1"
-                      br="$6"
-                      style={{
-                        shadowColor: '#2196F3',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 2,
-                        elevation: 2,
-                      }}
-                    >
-                      <Text color="white" fontSize="$2" fontWeight="bold">
-                        En proceso
-                      </Text>
-                    </Card>
-                  </XStack>
-                </Card>
-
-                <Card
-                  bg="$statusResolved"
-                  p="$3"
-                  br="$3"
-                  style={{
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 2,
-                    elevation: 2,
-                  }}
-                >
-                  <XStack jc="space-between" ai="center">
-                    <YStack f={1}>
-                      <Text fontWeight="600" color="$textPrimary">
-                        Luminaria dañada
-                      </Text>
-                      <Text fontSize="$3" color="$textSecondary">
-                        Av. Argentina, 245
-                      </Text>
-                    </YStack>
-                    <Card
-                      bg="#4CAF50"
-                      px="$3"
-                      py="$1"
-                      br="$6"
-                      style={{
-                        shadowColor: '#4CAF50',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 2,
-                        elevation: 2,
-                      }}
-                    >
-                      <Text color="white" fontSize="$2" fontWeight="bold">
-                        Resuelto
-                      </Text>
-                    </Card>
-                  </XStack>
-                </Card>
+            <XStack gap="$3">
+              <YStack 
+                flex={1} 
+                alignItems="center" 
+                gap="$2"
+                p="$3"
+                backgroundColor="$statusReceived"
+                borderRadius="$3"
+              >
+                <Text fontSize="$6" fontWeight="bold" color="$primary">
+                  0
+                </Text>
+                <Text fontSize="$3" color="$textSecondary" textAlign="center">
+                  Denuncias Activas
+                </Text>
               </YStack>
-            </Card>
 
-            {/* Últimos Anuncios */}
-            <Card
-              bg="white"
-              p="$4"
-              br="$4"
-              style={{
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 3,
-              }}
-            >
-              <H4 mb="$4" color="$textPrimary">Últimos Anuncios</H4>
-
-              <YStack gap="$3">
-                <Card
-                  bg="$background"
-                  p="$3"
-                  br="$3"
-                  borderLeftColor="$error"
-                  borderLeftWidth={4}
-                  style={{
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 2,
-                    elevation: 1,
-                  }}
-                >
-                  <XStack jc="space-between" ai="flex-start">
-                    <YStack f={1} gap="$1">
-                      <Text fontWeight="600" color="$textPrimary">
-                        Jornada de vacunación gratuita
-                      </Text>
-                      <Text fontSize="$3" color="$textSecondary">
-                        Este sábado 20 de enero en el parque principal
-                      </Text>
-                    </YStack>
-                    <Card
-                      bg="$error"
-                      px="$2"
-                      py="$1"
-                      br="$3"
-                      style={{
-                        shadowColor: '$error',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 2,
-                        elevation: 2,
-                      }}
-                    >
-                      <Text color="white" fontSize="$1" fontWeight="bold">
-                        Salud
-                      </Text>
-                    </Card>
-                  </XStack>
-                </Card>
-
-                <Card
-                  bg="$background"
-                  p="$3"
-                  br="$3"
-                  borderLeftColor="$secondary"
-                  borderLeftWidth={4}
-                  style={{
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 2,
-                    elevation: 1,
-                  }}
-                >
-                  <XStack jc="space-between" ai="flex-start">
-                    <YStack f={1} gap="$1">
-                      <Text fontWeight="600" color="$textPrimary">
-                        Corte de agua programado
-                      </Text>
-                      <Text fontSize="$3" color="$textSecondary">
-                        Mantenimiento en sector norte el domingo 21 de enero
-                      </Text>
-                    </YStack>
-                    <Card
-                      bg="$secondary"
-                      px="$2"
-                      py="$1"
-                      br="$3"
-                      style={{
-                        shadowColor: '$secondary',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 2,
-                        elevation: 2,
-                      }}
-                    >
-                      <Text color="white" fontSize="$1" fontWeight="bold">
-                        Servicios
-                      </Text>
-                    </Card>
-                  </XStack>
-                </Card>
+              <YStack 
+                flex={1} 
+                alignItems="center" 
+                gap="$2"
+                p="$3"
+                backgroundColor="$statusResolved"
+                borderRadius="$3"
+              >
+                <Text fontSize="$6" fontWeight="bold" color="$success">
+                  0
+                </Text>
+                <Text fontSize="$3" color="$textSecondary" textAlign="center">
+                  Resueltas
+                </Text>
               </YStack>
+
+              <YStack 
+                flex={1} 
+                alignItems="center" 
+                gap="$2"
+                p="$3"
+                backgroundColor="$statusInProgress"
+                borderRadius="$3"
+              >
+                <Text fontSize="$6" fontWeight="bold" color="$info">
+                  0
+                </Text>
+                <Text fontSize="$3" color="$textSecondary" textAlign="center">
+                  En Proceso
+                </Text>
+              </YStack>
+            </XStack>
+          </Card>
+          {/* Sección de Últimos Anuncios */}
+          <Card
+            bg="white"
+            p="$4"
+            borderRadius="$4"
+            shadowColor="#000"
+            shadowOffset={{ width: 0, height: 2 }}
+            shadowOpacity={0.1}
+            shadowRadius={4}
+            elevation={3}
+          >
+            <XStack ai="center" jc="space-between" mb="$4">
+              <YStack>
+                <H4 color="$textPrimary" fontWeight="bold">
+                  Últimos Anuncios
+                </H4>
+                <Text fontSize="$3" color="$textSecondary">
+                  Información municipal reciente
+                </Text>
+              </YStack>
+
+              <Button
+                size="$3"
+                variant="outlined"
+                bg="transparent"
+                borderColor="$primary"
+                color="$primary"
+                onPress={() => router.push('/anuncios')}
+                pressStyle={{
+                  bg: "$primary",
+                  borderColor: "$primary",
+                  scale: 0.95
+                }}
+              >
+                <XStack ai="center" gap="$1">
+                  <Text fontSize="$3" fontWeight="600" color="$primary">
+                    Ver todos
+                  </Text>
+                  <Ionicons name="arrow-forward" size={14} color="#E67E22" />
+                </XStack>
+              </Button>
+            </XStack>
+
+            {/* Estados de los anuncios */}
+            {anunciosLoading ? (
+              // Estado de carga
+              <YStack ai="center" jc="center" py="$6" gap="$3">
+                <YStack
+                  w={40}
+                  h={40}
+                  br={20}
+                  bg="$primary"
+                  ai="center"
+                  jc="center"
+                  animation="quick"
+                  style={{
+                    transform: [{ rotate: '360deg' }]
+                  }}
+                >
+                  <Ionicons name="megaphone" size={20} color="white" />
+                </YStack>
+                <Text fontSize="$4" color="$textSecondary" fontWeight="500">
+                  Cargando anuncios...
+                </Text>
+              </YStack>
+            ) : anunciosRecientes.length > 0 ? (
+              // Mostrar anuncios recientes
+              <YStack gap="$3">
+                {anunciosRecientes.map((anuncio) => (
+                  <AnuncioCard 
+                    key={anuncio.id} 
+                    anuncio={anuncio}
+                    isOffline={!isConnected}
+                  />
+                ))}
+
+                {anuncios.length > 2 && (
+                  <Card 
+                    bg="$gray2" 
+                    p="$3" 
+                    br="$3" 
+                    borderWidth={1} 
+                    borderColor="$borderColor"
+                  >
+                    <XStack ai="center" jc="center" gap="$2">
+                      <Ionicons name="information-circle-outline" size={18} color="#666" />
+                      <Text fontSize="$3" color="$textSecondary">
+                        {anuncios.length - 2} anuncio{anuncios.length - 2 !== 1 ? 's' : ''} más disponible{anuncios.length - 2 !== 1 ? 's' : ''}
+                      </Text>
+                    </XStack>
+                  </Card>
+                )}
+              </YStack>
+            ) : (
+              // Estado vacío
+              <YStack ai="center" jc="center" py="$6" gap="$3">
+                <YStack
+                  w={50}
+                  h={50}
+                  br={25}
+                  bg="$gray5"
+                  ai="center"
+                  jc="center"
+                >
+                  <Ionicons name="megaphone-outline" size={24} color="#999" />
+                </YStack>
+                <Text fontSize="$4" color="$textSecondary" fontWeight="500" ta="center">
+                  No hay anuncios disponibles
+                </Text>
+                <Text fontSize="$3" color="$textSecondary" ta="center" maxWidth={280}>
+                  {isConnected 
+                    ? 'No hay anuncios municipales publicados en este momento'
+                    : 'Verifica tu conexión para ver los anuncios más recientes'
+                  }
+                </Text>
+              </YStack>
+            )}
             </Card>
-          </YStack>
-        </ScrollView>
-      </SafeAreaView>
-    </>
+          {/* Información del usuario (solo para admin) */}
+          {user?.es_administrador && (
+            <Card
+              bg="$success"
+              p="$4"
+              borderRadius="$4"
+              shadowColor="$success"
+              shadowOffset={{ width: 0, height: 2 }}
+              shadowOpacity={0.3}
+              shadowRadius={4}
+              elevation={4}
+            >
+              <XStack alignItems="center" gap="$3">
+                <Ionicons name="shield-checkmark" size={24} color="white" />
+                <YStack flex={1}>
+                  <Text color="white" fontSize="$4" fontWeight="bold">
+                    Panel de Administrador
+                  </Text>
+                  <Text color="rgba(255,255,255,0.8)" fontSize="$3">
+                    Tienes acceso a funciones administrativas
+                  </Text>
+                </YStack>
+              </XStack>
+            </Card>
+          )}
+        </YStack>
+      </ScrollView>
+    </SafeAreaView>
   );
 }

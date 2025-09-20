@@ -1,16 +1,35 @@
+// src/types/denuncias.ts - ACTUALIZADO CON EVIDENCIAS
+// Tipos basados en los modelos reales de Django
 
+// NUEVO: Tipo para evidencias locales (antes de subir al servidor)
+export interface Evidence {
+  id: string;
+  uri: string;
+  type: 'image' | 'video';
+  fileName: string;
+  fileSize?: number;
+  uploadedAt?: string;
+}
+
+// ACTUALIZADO: DenunciaFormData con evidencias locales
 export interface DenunciaFormData {
   titulo: string;
   descripcion: string;
   categoria: string;  // ID como string para el formulario
   departamento: string; // ID como string para el formulario
-  nombreCalle: string;
-  numeroCalle: string;
-  evidencias: Evidencia[];
-  latitud?: number;
-  longitud?: number;
+  direccion: string; // ACTUALIZADO: campo unificado para dirección
+  ubicacion?: LocationData; // NUEVO: datos del mapa
+  evidencias: Evidence[]; // NUEVO: evidencias locales
 }
 
+// NUEVO: Tipo para datos de ubicación del mapa
+export interface LocationData {
+  latitud: number;
+  longitud: number;
+  address?: string;
+}
+
+// Tipo para evidencias en el servidor (formato backend)
 export interface Evidencia {
   id?: number;
   archivo: string; // CloudinaryField URL
@@ -28,8 +47,7 @@ export interface DepartamentoMunicipal {
 
 export interface Categoria {
   id: number;
-  departamento: DepartamentoMunicipal; // ForeignKey
-  // No es necesario incluir el departamento en el formulario, ya que se selecciona al crear
+  departamento: DepartamentoMunicipal; // Como en serializers.py - objeto completo
   nombre: string;
   descripcion?: string;
 }
@@ -52,7 +70,7 @@ export interface SituacionPublicacion {
   descripcion?: string;
 }
 
-// modelo Usuario
+// Basado en tu modelo Usuario
 export interface Usuario {
   id: number;
   rut: string; // USERNAME_FIELD
@@ -64,7 +82,7 @@ export interface Usuario {
   esta_activo: boolean;
 }
 
-// modelo Publicacion
+// Exactamente como en tu modelo Publicacion
 export interface Publicacion {
   id: number;
   codigo: string; // Auto-generado P-YYYY-MM-XXXXXXXX
@@ -114,7 +132,7 @@ export interface ImagenAnuncio {
   extension: string;
 }
 
-// Respuesta de la API para listas
+// Para la API response con paginación
 export interface ApiResponse<T> {
   results: T[];
   count: number;
@@ -122,7 +140,7 @@ export interface ApiResponse<T> {
   previous?: string;
 }
 
-//PublicacionCreateUpdateSerializer
+// Como espera tu PublicacionCreateUpdateSerializer
 export interface CreatePublicacionPayload {
   titulo: string;
   descripcion: string;

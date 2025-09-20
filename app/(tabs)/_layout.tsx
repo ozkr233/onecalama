@@ -1,23 +1,37 @@
+// app/(tabs)/_layout.tsx
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../src/hooks/useAuth';
 
 export default function TabLayout() {
+  const { user, isAuthenticated } = useAuth();
+
+  // Si no está autenticado, no mostrar nada (el root layout debería redirigir)
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: '#E67E22',
         tabBarInactiveTintColor: '#757575',
-        headerStyle: {
-          backgroundColor: '#E67E22',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
+        headerShown: false, // Mantenemos oculto porque usas AppHeader
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopColor: '#E0E0E0',
+          borderTopWidth: 1,
+          paddingTop: 5,
+          paddingBottom: 5,
+          height: 60,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+        },
+        tabBarIconStyle: {
+          marginBottom: -3,
         },
       }}
     >
@@ -26,10 +40,10 @@ export default function TabLayout() {
         options={{
           title: 'Inicio',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? 'home' : 'home-outline'} 
-              size={24} 
-              color={color} 
+            <Ionicons
+              name={focused ? 'home' : 'home-outline'}
+              size={22}
+              color={color}
             />
           ),
         }}
@@ -37,12 +51,12 @@ export default function TabLayout() {
       <Tabs.Screen
         name="denuncias"
         options={{
-          title: 'Denuncias',
+          title: 'Denunciar',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? 'document-text' : 'document-text-outline'} 
-              size={24} 
-              color={color} 
+            <Ionicons
+              name={focused ? 'document-text' : 'document-text-outline'}
+              size={22}
+              color={color}
             />
           ),
         }}
@@ -52,10 +66,10 @@ export default function TabLayout() {
         options={{
           title: 'Historial',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? 'time' : 'time-outline'} 
-              size={24} 
-              color={color} 
+            <Ionicons
+              name={focused ? 'time' : 'time-outline'}
+              size={22}
+              color={color}
             />
           ),
         }}
@@ -65,10 +79,10 @@ export default function TabLayout() {
         options={{
           title: 'Anuncios',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? 'megaphone' : 'megaphone-outline'} 
-              size={24} 
-              color={color} 
+            <Ionicons
+              name={focused ? 'megaphone' : 'megaphone-outline'}
+              size={22}
+              color={color}
             />
           ),
         }}

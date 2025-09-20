@@ -17,14 +17,28 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.municipalidadcalama.onecalama"
+      "bundleIdentifier": "com.municipalidadcalama.onecalama",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "OneCalama necesita acceso a tu ubicación para permitirte seleccionar la ubicación de tus denuncias ciudadanas.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "OneCalama necesita acceso a tu ubicación para permitirte seleccionar la ubicación de tus denuncias ciudadanas.",
+        "NSCameraUsageDescription": "OneCalama necesita acceso a tu cámara para tomar fotos de evidencias que ayuden a procesar tu denuncia más rápidamente.",
+        "NSPhotoLibraryUsageDescription": "OneCalama necesita acceso a tu galería de fotos para seleccionar evidencias que acompañen tu denuncia."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#E67E22"
       },
-      "package": "com.municipalidadcalama.onecalama"
+      "package": "com.municipalidadcalama.onecalama",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_MEDIA_LOCATION"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -32,7 +46,22 @@
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "OneCalama accede a tus fotos para agregar evidencias a las denuncias municipales.",
+          "cameraPermission": "OneCalama accede a tu cámara para tomar fotos de evidencias que ayuden a procesar tu denuncia."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "OneCalama necesita acceso a tu galería para seleccionar evidencias.",
+          "savePhotosPermission": "Permite guardar fotos tomadas como evidencias de denuncias.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

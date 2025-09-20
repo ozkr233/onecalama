@@ -1,331 +1,246 @@
+// app/(tabs)/denuncias.tsx - CONECTADO A TU API DJANGO REAL
 import React, { useState, useEffect } from 'react';
-import { Text, YStack, XStack, Button, Card, Input, TextArea, H3 } from 'tamagui';
-import { SafeAreaView, StatusBar, Alert, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-
-// Tipo para el formulario
-interface DenunciaFormData {
-  titulo: string;
-  descripcion: string;
-  categoria: string;
-  departamento: string;
-  nombreCalle: string;
-  numeroCalle: string;
-  evidencias: any[];
-}
+import { SafeAreaView, Alert, Text, View } from 'react-native';
+import DenunciaForm from '../../src/components/forms/DenunciaForm';
+import { DenunciaFormData } from '../../src/types/denuncias';
+import AppHeader from '../../src/components/layout/AppHeader';
+import { denunciasService } from '../../src/services/denuncias';
 
 export default function DenunciasScreen() {
+  // Estado inicial del formulario
   const [formData, setFormData] = useState<DenunciaFormData>({
     titulo: '',
     descripcion: '',
     categoria: '',
     departamento: '',
-    nombreCalle: '',
-    numeroCalle: '',
+    direccion: '',
+    ubicacion: undefined,
     evidencias: [],
   });
 
   const [loading, setLoading] = useState(false);
+  const [loadingInitial, setLoadingInitial] = useState(true);
 
-  const updateField = (field: keyof DenunciaFormData, value: any) => {
-    setFormData({
-      ...formData,
-      [field]: value
-    });
+  // Datos REALES desde tu Django API
+  const [departamentos, setDepartamentos] = useState<any[]>([]);
+  const [categorias, setCategorias] = useState<any[]>([]);
+  const [juntasVecinales, setJuntasVecinales] = useState<any[]>([]);
+
+  // Estados de conexión
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    try {
+      setLoadingInitial(true);
+      setConnectionError(null);
+
+      console.log('🔄 Iniciando carga de datos desde Django...');
+
+      // Cargar todos los datos desde tu API real
+      const {
+        categorias: categoriasData,
+        departamentos: departamentosData,
+        juntasVecinales: juntasData,
+        isAuthenticated: authStatus
+      } = await denunciasService.cargarDatosIniciales();
+
+      setIsAuthenticated(authStatus);
+
+      if (!authStatus) {
+        throw new Error('Token expirado o inválido. Verifica tu autenticación.');
+      }
+
+      // Validar que tengamos datos mínimos
+      if (categoriasData.length === 0 || departamentosData.length === 0) {
+        throw new Error('No se pudieron cargar las categorías o departamentos desde el servidor');
+      }
+
+      setDepartamentos(departamentosData);
+      setCategorias(categoriasData);
+      setJuntasVecinales(juntasData);
+
+      console.log('✅ Datos REALES cargados desde Django:', {
+        departamentos: departamentosData.length,
+        categorias: categoriasData.length,
+        juntasVecinales: juntasData.length
+      });
+
+      // Mostrar los primeros datos para debug
+      console.log('📋 Categorías cargadas:', categoriasData.slice(0, 3).map(c => c.nombre));
+      console.log('📋 Departamentos cargados:', departamentosData.slice(0, 3).map(d => d.nombre));
+
+    } catch (error) {
+      console.error('❌ Error cargando datos desde Django:', error);
+      setConnectionError(error.message);
+
+      Alert.alert(
+        '⚠️ Error de Conexión',
+        `No se pudieron cargar los datos desde tu servidor Django:\n\n${error.message}\n\n¿Quieres reintentar?`,
+        [
+          {
+            text: 'Reintentar',
+            onPress: () => loadInitialData()
+          },
+          {
+            text: 'Debug API',
+            onPress: () => {
+              // Navegar a la pantalla de debug
+              Alert.alert('Debug', 'Ve a la pantalla de test-api para verificar la conexión');
+            }
+          },
+          {
+            text: 'Usar datos offline',
+            style: 'cancel',
+            onPress: () => useOfflineData()
+          }
+        ]
+      );
+    } finally {
+      setLoadingInitial(false);
+    }
   };
 
-  const validateForm = (): boolean => {
-    if (!formData.titulo.trim()) {
-      Alert.alert('Error', 'El título es obligatorio');
-      return false;
-    }
-    if (!formData.descripcion.trim()) {
-      Alert.alert('Error', 'La descripción es obligatoria');
-      return false;
-    }
-    if (!formData.nombreCalle.trim() || !formData.numeroCalle.trim()) {
-      Alert.alert('Error', 'La dirección es obligatoria');
-      return false;
-    }
-    return true;
+  const useOfflineData = () => {
+    console.log('🔄 Usando datos offline por defecto...');
+
+    setDepartamentos([
+      { id: 1, nombre: 'Obras Públicas' },
+      { id: 2, nombre: 'Seguridad Ciudadana' },
+      { id: 3, nombre: 'Medio Ambiente' },
+      { id: 4, nombre: 'Servicios Públicos' },
+    ]);
+
+    setCategorias([
+      { id: 1, nombre: 'Infraestructura' },
+      { id: 2, nombre: 'Servicios Públicos' },
+      { id: 3, nombre: 'Seguridad' },
+      { id: 4, nombre: 'Medio Ambiente' },
+    ]);
+
+    setJuntasVecinales([]);
+    setConnectionError(null);
+    setIsAuthenticated(false);
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    if (!isAuthenticated) {
+      Alert.alert(
+        '⚠️ Sin Autenticación',
+        'No hay una sesión válida. ¿Quieres verificar la conexión?',
+        [
+          {
+            text: 'Verificar',
+            onPress: () => loadInitialData()
+          },
+          { text: 'Cancelar', style: 'cancel' }
+        ]
+      );
+      return;
+    }
 
     setLoading(true);
     try {
-      console.log('📤 Enviando denuncia:', formData);
-      
-      // Simulación de envío
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      console.log('📤 Enviando publicación a Django...');
+      console.log('📊 Datos del formulario:', {
+        titulo: formData.titulo,
+        categoria: formData.categoria,
+        departamento: formData.departamento,
+        evidencias: formData.evidencias.length
+      });
+
+      // Crear publicación en tu Django backend
+      const nuevaPublicacion = await denunciasService.crearPublicacion(formData);
+
+      console.log('✅ Publicación creada exitosamente en Django:', nuevaPublicacion);
+
+      // Mostrar mensaje de éxito con el código real de Django
       Alert.alert(
-        '✅ Denuncia Enviada', 
-        'Tu denuncia ha sido registrada exitosamente. Te notificaremos sobre su progreso.',
+        '✅ ¡Denuncia Enviada Exitosamente!',
+        `Tu denuncia ha sido registrada exitosamente:\n\n` +
+        `📄 Código: ${nuevaPublicacion.codigo}\n` +
+        `🏷️ Título: ${nuevaPublicacion.titulo}\n` +
+        `📅 Fecha: ${new Date(nuevaPublicacion.fecha_publicacion).toLocaleDateString()}\n\n` +
+        `${formData.evidencias.length > 0 ?
+          `📎 Evidencias: ${formData.evidencias.length} archivo(s)\n` : ''
+        }Te notificaremos sobre el progreso de tu solicitud.`,
         [
-          { 
-            text: 'OK', 
+          {
+            text: '🎉 Perfecto',
             onPress: () => {
-              // Limpiar formulario después de envío exitoso
+              // Limpiar formulario
               setFormData({
                 titulo: '',
                 descripcion: '',
                 categoria: '',
                 departamento: '',
-                nombreCalle: '',
-                numeroCalle: '',
+                direccion: '',
+                ubicacion: undefined,
                 evidencias: [],
               });
             }
           }
         ]
       );
-      
+
     } catch (error) {
-      console.error('❌ Error enviando denuncia:', error);
+      console.error('❌ Error enviando publicación a Django:', error);
+
       Alert.alert(
-        '❌ Error', 
-        'No se pudo enviar la denuncia. Intenta nuevamente.'
+        '❌ Error al Enviar',
+        `No se pudo enviar la denuncia a Django:\n\n${error.message}\n\nVerifica tu conexión e intenta nuevamente.`,
+        [
+          { text: 'OK' },
+          {
+            text: 'Verificar Conexión',
+            onPress: () => loadInitialData()
+          }
+        ]
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTomarFoto = () => {
-    Alert.alert(
-      '📷 Agregar Evidencia',
-      'Selecciona una opción',
-      [
-        { 
-          text: 'Cámara', 
-          onPress: () => {
-            Alert.alert('🚧 En desarrollo', 'La función de cámara estará disponible próximamente');
-          }
-        },
-        { 
-          text: 'Galería', 
-          onPress: () => {
-            Alert.alert('🚧 En desarrollo', 'La función de galería estará disponible próximamente');
-          }
-        },
-        { text: 'Cancelar', style: 'cancel' },
-      ]
+  // Mostrar loading inicial
+  if (loadingInitial) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
+        <AppHeader screenTitle="Nueva Denuncia" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={{ fontSize: 18, color: '#3B82F6', marginBottom: 10 }}>
+            🔄 Conectando con el servidor...
+          </Text>
+          <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
+            Cargando categorías y departamentos desde tu servidor
+          </Text>
+        </View>
+      </SafeAreaView>
     );
-  };
-
-  const handleUsarUbicacion = () => {
-    Alert.alert('🚧 En desarrollo', 'La función de GPS estará disponible próximamente');
-  };
+  }
 
   return (
-    <>
-      <StatusBar backgroundColor="#1A237E" barStyle="light-content" />
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-        {/* Header */}
-        <YStack 
-          bg="$municipal" 
-          p="$4"
-          style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 4,
-            elevation: 5,
-          }}
-        >
-          <XStack ai="center" gap="$3">
-            <Ionicons name="document-text" size={28} color="white" />
-            <YStack>
-              <Text fontSize="$7" fontWeight="bold" color="white">
-                Nueva Denuncia
-              </Text>
-              <Text fontSize="$3" color="rgba(255,255,255,0.9)">
-                Reporta problemas en tu comunidad
-              </Text>
-            </YStack>
-          </XStack>
-        </YStack>
+    <SafeAreaView style={{ flex: 1 }}>
+      <AppHeader
+        screenTitle="Nueva Denuncia"
+        screenSubtitle="Reporta un problema en tu comuna"
+        screenIcon="document-outline"
+          showAppInfo={false}
+        />
 
-        {/* Formulario */}
-        <ScrollView style={{ flex: 1 }}>
-          <YStack p="$4" gap="$4">
-            
-            {/* Información Básica */}
-            <Card 
-              bg="white" 
-              p="$4" 
-              br="$4"
-              style={{
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 3,
-              }}
-            >
-              <H3 color="$textPrimary" mb="$3">📝 Información Básica</H3>
-              
-              <YStack gap="$3">
-                <YStack gap="$2">
-                  <Text fontWeight="600" color="$textPrimary">Título de la denuncia *</Text>
-                  <Input
-                    placeholder="Ej: Bache en la calle principal"
-                    value={formData.titulo}
-                    onChangeText={(text) => updateField('titulo', text)}
-                    borderColor="$secondary"
-                    focusStyle={{ borderColor: '$primary' }}
-                    editable={!loading}
-                  />
-                </YStack>
-
-                <YStack gap="$2">
-                  <Text fontWeight="600" color="$textPrimary">Descripción detallada *</Text>
-                  <TextArea
-                    placeholder="Describe el problema con el mayor detalle posible..."
-                    value={formData.descripcion}
-                    onChangeText={(text) => updateField('descripcion', text)}
-                    borderColor="$secondary"
-                    focusStyle={{ borderColor: '$primary' }}
-                    numberOfLines={4}
-                    editable={!loading}
-                  />
-                </YStack>
-              </YStack>
-            </Card>
-
-            {/* Ubicación */}
-            <Card 
-              bg="white" 
-              p="$4" 
-              br="$4"
-              style={{
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 3,
-              }}
-            >
-              <H3 color="$textPrimary" mb="$3">📍 Ubicación</H3>
-              
-              <YStack gap="$3">
-                <XStack gap="$3">
-                  <YStack f={3} gap="$2">
-                    <Text fontWeight="600" color="$textPrimary">Nombre de la calle *</Text>
-                    <Input
-                      placeholder="Ej: Av. Argentina"
-                      value={formData.nombreCalle}
-                      onChangeText={(text) => updateField('nombreCalle', text)}
-                      borderColor="$secondary"
-                      focusStyle={{ borderColor: '$primary' }}
-                      editable={!loading}
-                    />
-                  </YStack>
-                  
-                  <YStack f={1} gap="$2">
-                    <Text fontWeight="600" color="$textPrimary">Número *</Text>
-                    <Input
-                      placeholder="123"
-                      value={formData.numeroCalle}
-                      onChangeText={(text) => updateField('numeroCalle', text)}
-                      keyboardType="numeric"
-                      borderColor="$secondary"
-                      focusStyle={{ borderColor: '$primary' }}
-                      editable={!loading}
-                    />
-                  </YStack>
-                </XStack>
-
-                <Button
-                  variant="outlined"
-                  borderColor="$secondary"
-                  color="$secondary"
-                  onPress={handleUsarUbicacion}
-                  disabled={loading}
-                >
-                  <XStack ai="center" gap="$2">
-                    <Ionicons name="location" size={20} color="#009688" />
-                    <Text color="$secondary">Usar mi ubicación actual</Text>
-                  </XStack>
-                </Button>
-              </YStack>
-            </Card>
-
-            {/* Evidencias */}
-            <Card 
-              bg="white" 
-              p="$4" 
-              br="$4"
-              style={{
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 3,
-              }}
-            >
-              <H3 color="$textPrimary" mb="$3">📷 Evidencias</H3>
-              
-              <YStack gap="$3">
-                <Text color="$textSecondary">
-                  Agrega fotos o videos que ayuden a documentar el problema
-                </Text>
-                
-                <Button
-                  variant="outlined"
-                  borderColor="$primary"
-                  borderStyle="dashed"
-                  onPress={handleTomarFoto}
-                  h={80}
-                  disabled={loading}
-                >
-                  <YStack ai="center" gap="$2">
-                    <Ionicons name="camera" size={24} color="#E67E22" />
-                    <Text color="$primary" fontWeight="600">Agregar Foto/Video</Text>
-                  </YStack>
-                </Button>
-              </YStack>
-            </Card>
-
-            {/* Botón de Envío */}
-            <Card 
-              bg="white" 
-              p="$4" 
-              br="$4"
-              style={{
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 3,
-              }}
-            >
-              <Button
-                size="$5"
-                bg="$primary"
-                color="white"
-                fontWeight="bold"
-                onPress={handleSubmit}
-                disabled={loading}
-                opacity={loading ? 0.7 : 1}
-              >
-                <XStack ai="center" gap="$3">
-                  <Ionicons name="send" size={20} color="white" />
-                  <Text color="white" fontWeight="bold" fontSize="$5">
-                    {loading ? 'Enviando...' : 'Enviar Denuncia'}
-                  </Text>
-                </XStack>
-              </Button>
-              
-              <Text fontSize="$2" color="$textSecondary" textAlign="center" mt="$3">
-                * Campos obligatorios
-              </Text>
-            </Card>
-          </YStack>
-        </ScrollView>
-      </SafeAreaView>
-    </>
+      <DenunciaForm
+        formData={formData}
+        onFormDataChange={(next) => setFormData(next)}
+        onSubmit={handleSubmit}
+        loading={loading}
+        departamentos={departamentos}
+        categorias={categorias}
+        juntasVecinales={juntasVecinales}
+      />
+    </SafeAreaView>
   );
 }

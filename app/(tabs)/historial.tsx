@@ -1,4 +1,4 @@
-// app/(tabs)/historial.tsx - PANTALLA DESDE CERO
+// app/(tabs)/historial.tsx - ACTUALIZADO PARA USAR EL CARD ORIGINAL
 import React from 'react';
 import { SafeAreaView, FlatList, RefreshControl } from 'react-native';
 import { Text, YStack, XStack, H4, H5, Button } from 'tamagui';
@@ -9,6 +9,7 @@ import { ResumenEstadistico } from '../../src/components/historial/ResumenEstadi
 import HistorialCard from '../../src/components/ui/HistorialCard';
 import LoadingSpinner from '../../src/components/ui/Loading';
 import { useHistorial } from '../../src/hooks/useHistorial';
+import { HistorialDenuncia } from '../../src/types/historial';
 
 export default function HistorialScreen() {
   const router = useRouter();
@@ -31,12 +32,26 @@ export default function HistorialScreen() {
     limpiarFiltros
   } = useHistorial();
 
-  // Navegación a detalle
-const handleNavigateToDetail = (denunciaId: string) => {
-  console.log('🔗 [SCREEN] Navegando a detalle:', denunciaId);
-  // CAMBIO: Corregir la ruta de navegación
-  router.push(`/denuncia/${denunciaId}`); // Era: `/denuncias/${denunciaId}`
-};
+  // Debug: Verificar qué datos llegan
+  console.log('🔍 [SCREEN] Estado del historial:', {
+    denunciasLength: denuncias?.length || 0,
+    loading,
+    error,
+    hayDatos,
+    primerasDenuncias: denuncias?.slice(0, 2).map(d => ({
+      id: d?.id,
+      codigo: d?.codigo,
+      titulo: d?.titulo,
+      isNull: d === null,
+      isUndefined: d === undefined
+    }))
+  });
+
+  // ✅ NAVEGACIÓN CORREGIDA PARA EL CARD ORIGINAL
+  const handleCardPress = (denuncia: HistorialDenuncia) => {
+    console.log('🔗 [SCREEN] Navegando a detalle:', denuncia.id);
+    router.push(`/denuncia/${denuncia.id}`);
+  };
 
   // Componente de indicador de conexión
   const ConnectionIndicator = () => (
@@ -122,7 +137,7 @@ const handleNavigateToDetail = (denunciaId: string) => {
         <Button
           size="$4"
           theme="orange"
-          onPress={() => router.push('/denuncias/nueva')}
+          onPress={() => router.push('/denuncias')}
         >
           <Ionicons name="add" size={20} />
           <Text>Crear denuncia</Text>
@@ -189,137 +204,127 @@ const handleNavigateToDetail = (denunciaId: string) => {
             {hayFiltrosActivos ? "Resultados" : "Mis denuncias"}
           </H5>
           <Text fontSize="$2" color="$gray10">
-            {totalDenuncias} {totalDenuncias === 1 ? "denuncia" : "denuncias"}
+            {totalDenuncias} {totalDenuncias === 1 ? 'denuncia' : 'denuncias'}
           </Text>
         </YStack>
-
-        <Button
-          size="$3"
-          variant="outlined"
-          chromeless
-          onPress={() => {
-            // TODO: Implementar modal de filtros
-            console.log('🔍 [SCREEN] Abrir filtros');
-          }}
-        >
-          <Ionicons name="options-outline" size={16} />
-          <Text fontSize="$2">Filtros</Text>
-          {hayFiltrosActivos && (
-            <YStack
-              backgroundColor="$orange9"
-              width={8}
-              height={8}
-              borderRadius={4}
-              marginLeft="$1"
-            />
-          )}
-        </Button>
       </XStack>
     </YStack>
   );
 
-  // Loading inicial
-  if (loading && !hayDatos && !hayError) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-        <AppHeader 
-          screenTitle="Mi Historial"
-          showNotifications={true}
-          notificationCount={notificacionesNoLeidas}
-        />
-        <LoadingState />
-      </SafeAreaView>
-    );
-  }
+  // ✅ FUNCIÓN DE RENDERIZADO ADAPTADA PARA EL CARD ORIGINAL
+  const renderDenuncia = ({ item, index }: { item: HistorialDenuncia; index: number }) => {
+    // Debug del item específico
+    console.log(`🎯 [SCREEN] Renderizando item ${index}:`, {
+      id: item?.id,
+      codigo: item?.codigo,
+      titulo: item?.titulo,
+      isNull: item === null,
+      isUndefined: item === undefined
+    });
 
+    // ✅ VALIDACIÓN: Verificar que el item existe y tiene datos válidos
+    if (!item) {
+      console.warn(`⚠️ [SCREEN] Item ${index} es null/undefined`);
+      return null;
+    }
+
+    if (!item.id) {
+      console.warn(`⚠️ [SCREEN] Item ${index} no tiene ID válido:`, item);
+      return null;
+    }
+
+    // ✅ RENDERIZAR CON EL CARD ORIGINAL (props adaptadas)
+    return (
+      <HistorialCard
+        key={`denuncia-${item.id}-${index}`}
+        denuncia={item}                    // ✅ CORREGIDO: denuncia en lugar de item
+        onPress={handleCardPress}          // ✅ CORREGIDO: función que recibe la denuncia completa
+        isFirst={index === 0}              // ✅ AGREGADO: para estilo de primer elemento
+        isLast={index === denunciasValidas.length - 1} // ✅ AGREGADO: para estilo de último elemento
+      />
+    );
+  };
+
+  // ✅ FILTRAR DATOS VÁLIDOS ANTES DE RENDERIZAR
+  const denunciasValidas = React.useMemo(() => {
+    if (!Array.isArray(denuncias)) {
+      console.warn('⚠️ [SCREEN] denuncias no es un array:', typeof denuncias);
+      return [];
+    }
+
+    const validas = denuncias.filter((denuncia, index) => {
+      const esValida = denuncia && 
+                      typeof denuncia === 'object' && 
+                      denuncia.id && 
+                      denuncia.codigo;
+      
+      if (!esValida) {
+        console.warn(`⚠️ [SCREEN] Denuncia ${index} es inválida:`, denuncia);
+      }
+      
+      return esValida;
+    });
+
+    console.log(`✅ [SCREEN] Denuncias válidas: ${validas.length} de ${denuncias.length}`);
+    return validas;
+  }, [denuncias]);
+
+  // Render principal
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-      <AppHeader 
-        screenTitle="Mi Historial"
-        showNotifications={true}
-        notificationCount={notificacionesNoLeidas}
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+      <AppHeader
+        screenTitle="Historial"
+        screenSubtitle={hayDatos ? `${totalDenuncias} denuncias` : "Mis denuncias"}
+        screenIcon="time"
+        showBackButton={false}
       />
 
       {/* Indicador de conexión */}
       <ConnectionIndicator />
 
-      {/* Lista principal */}
-      <FlatList
-        data={denuncias}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={refresh}
-            colors={['#E67E22']}
-            tintColor="#E67E22"
-          />
-        }
-        ListHeaderComponent={<ListHeader />}
-        renderItem={({ item, index }) => (
-          <YStack paddingHorizontal="$4" paddingBottom="$3">
-            <HistorialCard
-              item={item}
-              onPress={() => handleNavigateToDetail(item.id)}
-              isFirst={index === 0}
-              isLast={index === denuncias.length - 1}
+      {loading && !isRefreshing ? (
+        <LoadingState />
+      ) : error ? (
+        <ErrorState />
+      ) : !hayDatos ? (
+        <EmptyState />
+      ) : (
+        <FlatList
+          data={denunciasValidas}
+          renderItem={renderDenuncia}
+          keyExtractor={(item, index) => `historial-${item?.id || index}`}
+          ListHeaderComponent={ListHeader}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingBottom: 20,
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={refresh}
+              colors={['#E67E22']}
+              tintColor="#E67E22"
             />
-          </YStack>
-        )}
-        ListEmptyComponent={() => {
-          // Mostrar error si hay error y no hay datos
-          if (hayError && !hayDatos) {
-            return <ErrorState />;
           }
-          
-          // Mostrar estado vacío
-          if (!hayDatos) {
-            return <EmptyState />;
-          }
-          
-          return null;
-        }}
-        contentContainerStyle={{
-          flexGrow: 1,
-          paddingBottom: 100
-        }}
-      />
-
-      {/* Toast de error flotante si hay datos pero también error */}
-      {hayError && hayDatos && (
-        <YStack
-          position="absolute"
-          bottom="$10"
-          left="$4"
-          right="$4"
-          backgroundColor="$red9"
-          padding="$3"
-          borderRadius="$4"
-          elevation={5}
-          shadowColor="$shadowColor"
-          shadowOffset={{ width: 0, height: 2 }}
-          shadowOpacity={0.25}
-          shadowRadius={3.84}
-        >
-          <XStack justifyContent="space-between" alignItems="center">
-            <XStack alignItems="center" space="$2" flex={1}>
-              <Ionicons name="warning" size={20} color="white" />
-              <Text fontSize="$3" color="white" numberOfLines={2}>
-                {error}
+          ItemSeparatorComponent={() => <YStack height="$1" />}
+          ListEmptyComponent={() => (
+            <YStack padding="$4" alignItems="center">
+              <Text fontSize="$3" color="$gray9" textAlign="center">
+                No se pueden mostrar las denuncias en este momento
               </Text>
-            </XStack>
-            
-            <Button
-              size="$2"
-              chromeless
-              color="white"
-              onPress={recargarCompleto}
-            >
-              <Ionicons name="refresh" size={16} color="white" />
-            </Button>
-          </XStack>
-        </YStack>
+              <Button
+                size="$3"
+                variant="outlined"
+                onPress={recargarCompleto}
+                marginTop="$3"
+              >
+                <Ionicons name="refresh" size={16} />
+                <Text>Reintentar</Text>
+              </Button>
+            </YStack>
+          )}
+        />
       )}
     </SafeAreaView>
   );

@@ -1,4 +1,4 @@
-// src/types/historial.ts - ACTUALIZADO CON 'sin_priorizar'
+// src/types/historial.ts 
 
 export interface Evidencia {
   id: string;
@@ -33,17 +33,17 @@ export interface Ubicacion {
 
 export type EstadoDenuncia = 'pendiente' | 'en_proceso' | 'resuelto' | 'rechazado' | 'cerrado';
 
-// ✅ ACTUALIZADO: Agregado 'sin_priorizar' para cuando el backend no tiene prioridades
 export type PrioridadDenuncia = 'baja' | 'media' | 'alta' | 'sin_priorizar';
 
+// ✅ CORREGIDO: Alineado con la estructura real del backend Django
 export interface HistorialDenuncia {
   id: string;
-  numeroFolio: string;
+  codigo: string; // ✅ CAMBIADO: Campo real del backend (era numeroFolio)
   titulo: string;
   descripcion: string;
   categoria: string;
   estado: EstadoDenuncia;
-  prioridad: PrioridadDenuncia; // ✅ Ahora incluye 'sin_priorizar'
+  prioridad: PrioridadDenuncia;
   fechaCreacion: string;
   fechaActualizacion?: string;
   fechaResolucion?: string;
@@ -54,6 +54,12 @@ export interface HistorialDenuncia {
   comentarioSatisfaccion?: string | null;
   departamentoAsignado?: string | null;
   tiempoRespuesta?: number | null; // Días para primera respuesta
+  
+  // ✅ NUEVO: Campos adicionales del backend que pueden ser útiles
+  nombreCalle?: string; // nombre_calle del backend
+  numeroCalle?: number; // numero_calle del backend
+  juntaVecinal?: string; // Nombre de la junta vecinal
+  fechaPublicacion?: string; // fecha_publicacion original del backend
 }
 
 export interface EstadisticasHistorial {
@@ -75,7 +81,7 @@ export interface EstadisticasHistorial {
 export interface FiltrosHistorial {
   estado?: EstadoDenuncia[];
   categoria?: string[];
-  prioridad?: PrioridadDenuncia[]; // ✅ Ahora incluye 'sin_priorizar'
+  prioridad?: PrioridadDenuncia[];
   fechaDesde?: string;
   fechaHasta?: string;
   departamento?: string[];
@@ -125,3 +131,56 @@ export interface HistorialLoadingState {
   error: string | null;
   ultimaActualizacion?: string;
 }
+
+// ✅ NUEVO: Interfaz que mapea directamente la estructura del backend Django
+export interface PublicacionBackend {
+  id: number;
+  codigo: string; // P-YYYY-MM-XXXXXXXX
+  titulo: string;
+  descripcion: string;
+  fecha_publicacion: string;
+  nombre_calle?: string;
+  numero_calle: number;
+  latitud: number;
+  longitud: number;
+  usuario: {
+    id: number;
+    nombre: string;
+    rut: string;
+    email?: string;
+  };
+  junta_vecinal: {
+    id: number;
+    nombre_junta?: string;
+    villa?: string;
+    comuna?: string;
+  };
+  categoria: {
+    id: number;
+    nombre: string;
+    departamento: {
+      id: number;
+      nombre: string;
+    };
+  };
+  departamento: {
+    id: number;
+    nombre: string;
+  };
+  situacion?: {
+    id: number;
+    nombre: string;
+  };
+  evidencias?: Array<{
+    id: number;
+    archivo: string;
+    fecha: string;
+    extension: string;
+  }>;
+  prioridad?: string; // 'alta' | 'media' | 'baja'
+}
+
+// ✅ NUEVO: Helper type para compatibilidad hacia atrás
+export type HistorialDenunciaLegacy = HistorialDenuncia & {
+  numeroFolio: string; // Alias para codigo
+};

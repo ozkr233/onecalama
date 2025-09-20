@@ -1,5 +1,4 @@
-// src/constants/api.ts - CORREGIDO SEGÚN TU BACKEND DJANGO
-
+// src/constants/api.ts - ACTUALIZADO CON RESPUESTAS MUNICIPALES
 // URLs base según ambiente - CORREGIDAS
 export const API_CONFIG = {
   development: {
@@ -35,7 +34,7 @@ export const ENDPOINTS = {
     REGISTER: '/registro/',              // ← v1/registro/
     REFRESH: '/token/refresh/',          // ← v1/token/refresh/
     LOGOUT: '/logout/',                  // Si tienes endpoint de logout
-    PROFILE: '/usuarios/',            // Endpoint del perfil de usuario
+    PROFILE: '/usuarios/',               // Endpoint del perfil de usuario
   },
 
   // Datos maestros - NOMBRES EXACTOS DE TU BACKEND
@@ -56,8 +55,9 @@ export const ENDPOINTS = {
   ANUNCIOS: '/anuncios-municipales/',                // ✅ v1/anuncios-municipales/
   ANUNCIO_DETALLE: (id: number) => `/anuncios-municipales/${id}/`,
 
-  // Respuestas municipales
+  // ✅ NUEVO: Respuestas municipales - EXACTO DE TU BACKEND
   RESPUESTAS_MUNICIPALES: '/respuestas-municipales/', // ✅ v1/respuestas-municipales/
+  RESPUESTA_DETALLE: (id: number) => `/respuestas-municipales/${id}/`,
 
   // Estadísticas - BASADO EN TUS URLS
   ESTADISTICAS: {
@@ -67,6 +67,8 @@ export const ENDPOINTS = {
     RESUELTOS: '/resueltos-por-mes/',               // ✅ v1/resueltos-por-mes/
     TASA_RESOLUCION: '/tasa-resolucion-departamento/', // ✅ v1/tasa-resolucion-departamento/
     POR_JUNTA: '/publicaciones-por-junta-vecinal/', // ✅ v1/publicaciones-por-junta-vecinal/
+    // ✅ NUEVO: Estadísticas de respuestas
+    RESPUESTAS: '/estadisticas-respuestas/',         // ✅ v1/estadisticas-respuestas/
   },
 
   // Reportes - EXACTOS DE TU BACKEND
@@ -92,131 +94,49 @@ export const COMMON_HEADERS = {
 // Configuraciones de cache (TTL en milisegundos)
 export const CACHE_CONFIG = {
   // Datos que cambian poco - cache largo
-  CATEGORIAS: 30 * 60 * 1000,              // 30 minutos
-  DEPARTAMENTOS: 30 * 60 * 1000,           // 30 minutos
-  JUNTAS_VECINALES: 60 * 60 * 1000,        // 1 hora
-  SITUACIONES: 60 * 60 * 1000,             // 1 hora
+  CATEGORIAS: 30 * 60 * 1000,        // 30 minutos
+  DEPARTAMENTOS: 30 * 60 * 1000,     // 30 minutos  
+  JUNTAS_VECINALES: 15 * 60 * 1000,  // 15 minutos
+  SITUACIONES: 30 * 60 * 1000,       // 30 minutos
 
-  // Datos dinámicos - cache corto
-  PUBLICACIONES: 2 * 60 * 1000,            // 2 minutos
-  ANUNCIOS: 5 * 60 * 1000,                 // 5 minutos
-  RESPUESTAS: 1 * 60 * 1000,               // 1 minuto
-  ESTADISTICAS: 5 * 60 * 1000,             // 5 minutos
+  // Datos que cambian seguido - cache corto
+  PUBLICACIONES: 5 * 60 * 1000,      // 5 minutos
+  ANUNCIOS: 10 * 60 * 1000,          // 10 minutos
+  // ✅ NUEVO: Cache para respuestas municipales
+  RESPUESTAS_MUNICIPALES: 5 * 60 * 1000, // 5 minutos
 
-  // Perfil usuario - cache medio
-  PROFILE: 10 * 60 * 1000,                 // 10 minutos
+  // Estadísticas - cache medio
+  ESTADISTICAS: 15 * 60 * 1000,      // 15 minutos
 } as const;
 
-// Timeouts específicos por tipo de operación
-export const TIMEOUTS = {
-  // Operaciones rápidas
-  GET_LIST: 8000,          // 8 segundos (más tiempo para Django)
-  GET_DETAIL: 5000,        // 5 segundos
-
-  // Operaciones de escritura
-  CREATE: 15000,           // 15 segundos (subida de archivos)
-  UPDATE: 10000,           // 10 segundos
-  DELETE: 8000,            // 8 segundos
-
-  // Operaciones especiales
-  LOGIN: 10000,            // 10 segundos
-  UPLOAD: 30000,           // 30 segundos
-  DOWNLOAD: 20000,         // 20 segundos
-  REPORTS: 60000,          // 1 minuto para reportes
+// Configuraciones de paginación
+export const PAGINATION_CONFIG = {
+  DEFAULT_PAGE_SIZE: 20,
+  MAX_PAGE_SIZE: 100,
+  PREFETCH_PAGES: 2, // Páginas a precargar
 } as const;
 
-// Límites de paginación - AJUSTADOS PARA TU BACKEND
-export const PAGINATION = {
-  DEFAULT_PAGE_SIZE: 10,
-  MAX_PAGE_SIZE: 50,
-  ANUNCIOS_PAGE_SIZE: 20,      // ← Más anuncios por página
-  PUBLICACIONES_PAGE_SIZE: 15, // ← Más publicaciones por página
-} as const;
-
-// Configuración de reintentos por tipo de error
+// Configuraciones de retry
 export const RETRY_CONFIG = {
-  // Códigos de estado que deberían reintentarse
-  RETRYABLE_STATUS_CODES: [500, 502, 503, 504, 408, 429], // ← Agregado 429 (Rate Limit)
-
-  // Tipos de error de red que deberían reintentarse
-  RETRYABLE_NETWORK_ERRORS: [
-    'NETWORK_ERROR',
-    'TIMEOUT',
-    'CONNECTION_ERROR',
-    'DNS_ERROR'
-  ],
-
-  // Delay entre reintentos (ms) - MÁS AGRESIVO
-  RETRY_DELAYS: [500, 1000, 2000], // Más rápido para desarrollo
-
-  // Máximo número de reintentos por operación
-  MAX_RETRIES: {
-    GET: 3,      // ← Más reintentos para GET
-    POST: 2,     // ← Más reintentos para POST
-    PUT: 2,      // ← Más reintentos para PUT
-    DELETE: 1,   // Sin cambios para DELETE
-    UPLOAD: 2    // ← Más reintentos para uploads
-  }
+  MAX_RETRIES: 3,
+  RETRY_DELAY: 1000, // ms
+  BACKOFF_MULTIPLIER: 2,
+  RETRY_ON_STATUS: [408, 429, 500, 502, 503, 504],
 } as const;
 
-// Configuración para uploads - OPTIMIZADA PARA CLOUDINARY
-export const UPLOAD_CONFIG = {
-  MAX_FILE_SIZE: 15 * 1024 * 1024,          // 15MB (más grande)
-  ALLOWED_IMAGE_TYPES: [
-    'image/jpeg',
-    'image/jpg',
-    'image/png',
-    'image/webp',
-    'image/heic'    // ← Para iOS
-  ],
-  ALLOWED_DOCUMENT_TYPES: [
-    'application/pdf',
-    'text/plain',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  ],
-  CHUNK_SIZE: 2 * 1024 * 1024,              // 2MB chunks (más grande)
-
-  // Configuración específica para evidencias
-  EVIDENCIAS: {
-    MAX_COUNT: 5,                           // Máximo 5 evidencias por publicación
-    REQUIRED_FIELDS: ['archivo'],           // Campos requeridos
-    CLOUDINARY_FOLDER: 'evidencias/',      // Carpeta en Cloudinary
-  }
+// ✅ NUEVO: Tipos para filtros de respuestas municipales
+export const RESPUESTAS_FILTERS = {
+  TODAS: 'todas',
+  PUNTUADAS: 'puntuadas', 
+  SIN_PUNTUAR: 'sin_puntuar',
+  POR_DEPARTAMENTO: 'por_departamento',
+  POR_FUNCIONARIO: 'por_funcionario',
 } as const;
 
-// Mensajes de error estandarizados - MÁS ESPECÍFICOS
-export const ERROR_MESSAGES = {
-  NETWORK_ERROR: 'Error de conexión. Verifica tu internet y la conexión al servidor.',
-  TIMEOUT: 'La operación tardó demasiado. El servidor puede estar sobrecargado.',
-  UNAUTHORIZED: 'Tu sesión ha expirado. Inicia sesión nuevamente.',
-  FORBIDDEN: 'No tienes permisos para realizar esta acción.',
-  NOT_FOUND: 'El recurso solicitado no fue encontrado en el servidor.',
-  SERVER_ERROR: 'Error interno del servidor. Intenta más tarde.',
-  VALIDATION_ERROR: 'Los datos enviados no son válidos. Revisa la información.',
-  RATE_LIMITED: 'Demasiadas solicitudes. Espera un momento antes de intentar nuevamente.',
-  FILE_TOO_LARGE: `El archivo es demasiado grande. Máximo ${UPLOAD_CONFIG.MAX_FILE_SIZE / (1024*1024)}MB`,
-  INVALID_FILE_TYPE: 'Tipo de archivo no permitido.',
-  UNKNOWN_ERROR: 'Ocurrió un error inesperado.',
-} as const;
-
-// Estados de la aplicación
-export const APP_STATES = {
-  LOADING: 'loading',
-  SUCCESS: 'success',
-  ERROR: 'error',
-  IDLE: 'idle',
-  UPLOADING: 'uploading',    // ← Nuevo estado para uploads
-  REFRESHING: 'refreshing',  // ← Nuevo estado para refresh
-} as const;
-
-// Configuración de logs - MÁS DETALLADA
-export const LOG_CONFIG = {
-  ENABLE_API_LOGS: __DEV__,
-  LOG_LEVEL: __DEV__ ? 'debug' : 'error',
-  LOG_REQUESTS: __DEV__,
-  LOG_RESPONSES: __DEV__,
-  LOG_ERRORS: true,
-  LOG_PERFORMANCE: __DEV__,     // ← Para medir tiempos de respuesta
-  LOG_CACHE_HITS: __DEV__,      // ← Para debug de cache
+// ✅ NUEVO: Configuraciones específicas para respuestas municipales
+export const RESPUESTAS_CONFIG = {
+  PUNTUACION_MIN: 1,
+  PUNTUACION_MAX: 5,
+  ITEMS_PER_PAGE: 15,
+  AUTO_REFRESH_INTERVAL: 5 * 60 * 1000, // 5 minutos
 } as const;

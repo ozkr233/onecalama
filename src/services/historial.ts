@@ -1,4 +1,4 @@
-// src/services/historial.ts - BASADO EN TU CÓDIGO FUNCIONAL ANTERIOR
+// src/services/historial.ts - COMPLETO CON MÉTODO ORIGINAL DE USUARIO
 import { HistorialDenuncia, FiltrosHistorial, EstadisticasHistorial } from '../types/historial';
 import { apiService } from './api';
 import AuthHelper from '../utils/authHelper';
@@ -6,13 +6,31 @@ import AuthHelper from '../utils/authHelper';
 class HistorialService {
   
   /**
-   * Obtener historial usando el parámetro ?usuario=${userId} como en tu código anterior
+   * Verificar conexión con el backend
+   */
+  async verificarConexion(): Promise<boolean> {
+    try {
+      console.log('🔌 [HISTORIAL] Verificando conexión...');
+      
+      // Intentar hacer una petición simple al backend
+      await apiService.get('/categorias/', true);
+      console.log('✅ [HISTORIAL] Conexión establecida');
+      return true;
+      
+    } catch (error: any) {
+      console.error('❌ [HISTORIAL] Sin conexión al backend:', error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Obtener historial usando el parámetro ?usuario=${userId} - MÉTODO ORIGINAL
    */
   async obtenerHistorial(filtros?: FiltrosHistorial): Promise<HistorialDenuncia[]> {
     try {
       console.log('🔄 [HISTORIAL] Iniciando obtención de historial...');
       
-      // 1. Obtener ID del usuario actual
+      // 1. Obtener ID del usuario actual - USANDO MÉTODO ORIGINAL
       const usuarioId = await this.obtenerUsuarioId();
       console.log('👤 [HISTORIAL] Usuario ID obtenido:', usuarioId);
       
@@ -92,14 +110,19 @@ class HistorialService {
       const publicacion = await apiService.get(`/publicaciones/${id}/`, true);
       
       if (!publicacion) {
+        console.log('⚠️ [HISTORIAL] Publicación no encontrada');
         return null;
       }
       
+      console.log('✅ [HISTORIAL] Publicación encontrada, transformando...');
       return this.transformarAHistorial(publicacion);
       
     } catch (error: any) {
       console.error('❌ [HISTORIAL] Error obteniendo denuncia:', error.message);
-      return null;
+      if (error.message?.includes('404')) {
+        return null;
+      }
+      throw new Error(`Error al cargar denuncia: ${error.message}`);
     }
   }
 
@@ -142,7 +165,7 @@ class HistorialService {
   }
 
   /**
-   * Calificar satisfacción
+   * Calificar satisfacción - MÉTODO ORIGINAL
    */
   async calificarSatisfaccion(
     denunciaId: string, 
@@ -165,21 +188,10 @@ class HistorialService {
     }
   }
 
-  /**
-   * Verificar conectividad con el backend
-   */
-  async verificarConexion(): Promise<boolean> {
-    try {
-      await apiService.get('/categorias/', true);
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }
-
   // ==================== MÉTODOS PRIVADOS ====================
 
   /**
+   * ✅ MÉTODO ORIGINAL QUE FUNCIONABA - NO MODIFICADO
    * Obtener ID del usuario actual - SIMPLIFICADO
    */
   private async obtenerUsuarioId(): Promise<number> {
@@ -207,7 +219,7 @@ class HistorialService {
       console.log('⚠️ [HISTORIAL] Error obteniendo info del token:', error);
     }
 
-    // Estrategia 3: Buscar por RUT en usuarios
+    // Estrategia 3: Buscar por RUT en usuarios - ORIGINAL
     try {
       const userInfo = await AuthHelper.getUserInfoFromToken();
       if (userInfo?.rut) {
@@ -226,7 +238,7 @@ class HistorialService {
       console.log('⚠️ [HISTORIAL] Error buscando por RUT:', error);
     }
 
-    // Estrategia 4: Fallback para desarrollo (RUT conocido)
+    // Estrategia 4: Fallback para desarrollo (RUT conocido) - ORIGINAL
     try {
       const userInfo = await AuthHelper.getUserInfoFromToken();
       if (userInfo?.rut === '20123930-5') {
@@ -242,61 +254,151 @@ class HistorialService {
 
   /**
    * Transformar publicación del backend al formato de historial
-   * Basado en la estructura que ya conoces: { usuario: { id, nombre }, situacion: { nombre }, ... }
+   * ✅ CORREGIDO: Usa el campo 'codigo' en lugar de 'numeroFolio'
    */
   private transformarAHistorial(publicacion: any): HistorialDenuncia {
-    return {
-      id: publicacion.id?.toString() || '',
-      numeroFolio: publicacion.codigo || `CAL-${publicacion.id}`,
-      titulo: publicacion.titulo || 'Sin título',
-      descripcion: publicacion.descripcion || 'Sin descripción',
-      categoria: publicacion.categoria?.nombre || 'Sin categoría',
-      estado: this.mapearEstado(publicacion.situacion?.nombre),
-      prioridad: this.mapearPrioridad(publicacion.prioridad || 'media'),
-      fechaCreacion: publicacion.fecha_publicacion || new Date().toISOString(),
-      fechaActualizacion: publicacion.fecha_actualizacion || publicacion.fecha_publicacion,
-      fechaResolucion: publicacion.fecha_resolucion || null,
-      ubicacion: {
-        direccion: publicacion.ubicacion || publicacion.direccion || '',
-        coordenadas: this.extraerCoordenadas(publicacion),
-        referencias: publicacion.referencias || ''
-      },
-      evidencias: this.transformarEvidencias(publicacion.evidencias || []),
-      respuestas: this.transformarRespuestas(publicacion.respuestas || []),
-      satisfaccionCiudadano: publicacion.satisfaccion_ciudadano || null,
-      comentarioSatisfaccion: publicacion.comentario_satisfaccion || null,
-      departamentoAsignado: publicacion.departamento?.nombre || publicacion.categoria?.departamento?.nombre || null,
-      tiempoRespuesta: this.calcularTiempoRespuesta(
-        publicacion.fecha_publicacion,
-        publicacion.fecha_primera_respuesta
-      )
-    };
+    // Debug: Mostrar estructura recibida
+    console.log('🔍 [HISTORIAL] Transformando publicación:', {
+      id: publicacion?.id,
+      codigo: publicacion?.codigo,
+      titulo: publicacion?.titulo,
+      situacion: publicacion?.situacion,
+      categoria: publicacion?.categoria,
+      keys: publicacion ? Object.keys(publicacion) : 'publicacion is null/undefined'
+    });
+
+    // Validar que publicacion no sea null/undefined
+    if (!publicacion) {
+      console.error('❌ [HISTORIAL] Publicación es null/undefined');
+      throw new Error('Datos de publicación inválidos');
+    }
+
+    // Extraer nombre de la situación (puede venir como objeto o string)
+    const situacionNombre = typeof publicacion.situacion === 'object' 
+      ? publicacion.situacion?.nombre 
+      : publicacion.situacion;
+
+    // Extraer nombre de la categoría (puede venir como objeto o string)
+    const categoriaNombre = typeof publicacion.categoria === 'object'
+      ? publicacion.categoria?.nombre
+      : publicacion.categoria;
+
+    // Construir dirección desde los campos del backend
+    const direccion = this.construirDireccion(publicacion);
+
+    try {
+      // ✅ CORREGIDO: Mapear a la estructura correcta del type HistorialDenuncia
+      const resultado: HistorialDenuncia = {
+        id: publicacion.id?.toString() || '',
+        codigo: publicacion.codigo || `P-${publicacion.id}`, // ✅ Campo correcto del type
+        titulo: publicacion.titulo || 'Sin título',
+        descripcion: publicacion.descripcion || 'Sin descripción',
+        categoria: categoriaNombre || 'Sin categoría',
+        estado: this.mapearEstado(situacionNombre),
+        prioridad: this.mapearPrioridad(publicacion.prioridad),
+        fechaCreacion: publicacion.fecha_publicacion || new Date().toISOString(),
+        fechaActualizacion: publicacion.fecha_actualizacion || publicacion.fecha_publicacion,
+        fechaResolucion: publicacion.fecha_resolucion || null,
+        ubicacion: {
+          direccion: direccion,
+          coordenadas: this.extraerCoordenadas(publicacion),
+          referencias: publicacion.referencias || ''
+        },
+        evidencias: this.transformarEvidencias(publicacion.evidencias || publicacion.evidencia_set || []),
+        respuestas: this.transformarRespuestas(publicacion.respuestas || []),
+        satisfaccionCiudadano: publicacion.satisfaccion_ciudadano || null,
+        comentarioSatisfaccion: publicacion.comentario_satisfaccion || null,
+        departamentoAsignado: this.extraerDepartamento(publicacion),
+        tiempoRespuesta: this.calcularTiempoRespuesta(
+          publicacion.fecha_publicacion,
+          publicacion.fecha_primera_respuesta
+        ),
+        
+        // ✅ NUEVO: Campos adicionales del backend
+        nombreCalle: publicacion.nombre_calle || null,
+        numeroCalle: publicacion.numero_calle || null,
+        juntaVecinal: publicacion.junta_vecinal?.nombre_junta || publicacion.junta_vecinal?.villa || null,
+        fechaPublicacion: publicacion.fecha_publicacion || null,
+      };
+
+      console.log('✅ [HISTORIAL] Publicación transformada exitosamente:', {
+        id: resultado.id,
+        codigo: resultado.codigo,
+        titulo: resultado.titulo.substring(0, 30)
+      });
+
+      return resultado;
+
+    } catch (error: any) {
+      console.error('❌ [HISTORIAL] Error transformando publicación:', error);
+      console.error('❌ [HISTORIAL] Datos recibidos:', publicacion);
+      throw new Error(`Error transformando datos: ${error.message}`);
+    }
+  }
+
+  /**
+   * Construir dirección desde los campos del backend
+   */
+  private construirDireccion(publicacion: any): string {
+    const partes = [];
+    
+    if (publicacion.nombre_calle) {
+      partes.push(publicacion.nombre_calle);
+    }
+    
+    if (publicacion.numero_calle) {
+      partes.push(publicacion.numero_calle.toString());
+    }
+    
+    // Agregar información de junta vecinal si existe
+    if (publicacion.junta_vecinal?.villa) {
+      partes.push(publicacion.junta_vecinal.villa);
+    }
+    
+    return partes.length > 0 ? partes.join(' ') : 'Dirección no especificada';
+  }
+
+  /**
+   * Extraer nombre del departamento
+   */
+  private extraerDepartamento(publicacion: any): string | null {
+    // Puede venir desde el departamento directo o desde la categoría
+    if (publicacion.departamento?.nombre) {
+      return publicacion.departamento.nombre;
+    }
+    
+    if (publicacion.categoria?.departamento?.nombre) {
+      return publicacion.categoria.departamento.nombre;
+    }
+    
+    return null;
   }
 
   /**
    * Mapear estado del backend al formato de la app
-   * Basado en los estados que vi en tu código: "recibido", "en curso", "resuelto", "pendiente", "no resuelto"
    */
-  private mapearEstado(estado: string): HistorialDenuncia['estado'] {
-    if (!estado) return 'pendiente';
-    
-    const estadoLower = estado.toLowerCase();
-    
-    if (estadoLower.includes('resuelto') && !estadoLower.includes('no')) return 'resuelto';
-    if (estadoLower.includes('en curso') || estadoLower.includes('proceso')) return 'en_proceso';
-    if (estadoLower.includes('pendiente') || estadoLower.includes('recibido')) return 'pendiente';
-    if (estadoLower.includes('no resuelto') || estadoLower.includes('rechazado')) return 'rechazado';
-    if (estadoLower.includes('cerrado')) return 'cerrado';
-    
-    return 'pendiente';
-  }
+private mapearEstado(estado?: string): HistorialDenuncia['estado'] {
+  if (!estado) return 'pendiente';
+  
+  const estadoLower = estado.toLowerCase();
+  
+  // ✅ CORREGIDO: Mapear según los estados reales del backend
+  if (estadoLower.includes('resuelto')) return 'resuelto';
+  if (estadoLower.includes('en curso') || estadoLower.includes('proceso')) return 'en_proceso';
+  if (estadoLower.includes('recibido')) return 'pendiente'; // ✅ "Recibido" → 'pendiente'
+  if (estadoLower.includes('pendiente')) return 'pendiente';
+  if (estadoLower.includes('no resuelto') || estadoLower.includes('rechazado') || estadoLower.includes('denegado')) return 'rechazado';
+  if (estadoLower.includes('cerrado') || estadoLower.includes('finalizado')) return 'cerrado';
+  
+  // ✅ Log para debug de estados no reconocidos
+  console.warn('⚠️ [HISTORIAL] Estado no reconocido del backend:', estado);
+  return 'pendiente';
+}
 
   /**
    * Mapear prioridad del backend al formato de la app
-   * TEMPORAL: Como el backend aún no tiene prioridades, devolver 'sin_priorizar'
    */
-  private mapearPrioridad(prioridad: string): HistorialDenuncia['prioridad'] {
-    // Mientras el backend no tenga prioridades implementadas
+  private mapearPrioridad(prioridad?: string): HistorialDenuncia['prioridad'] {
     if (!prioridad) return 'sin_priorizar';
     
     const prioridadLower = prioridad.toLowerCase();
@@ -305,7 +407,6 @@ class HistorialService {
     if (prioridadLower.includes('alta') || prioridadLower.includes('critica') || prioridadLower.includes('urgente')) return 'alta';
     if (prioridadLower.includes('media') || prioridadLower.includes('normal')) return 'media';
     
-    // Por defecto, sin priorizar hasta que se implemente en backend
     return 'sin_priorizar';
   }
 
@@ -327,104 +428,38 @@ class HistorialService {
   }
 
   /**
-   * Transformar evidencias del backend - MEJORADO PARA CLOUDINARY
+   * Transformar evidencias del backend
    */
-  private transformarEvidencias(evidencias: any[]): any[] {
-    return evidencias.map(evidencia => {
-      const archivo = evidencia.archivo || evidencia.url || '';
-      const urlCompleta = this.construirUrlCloudinary(archivo);
-      
-      return {
-        id: evidencia.id?.toString() || '',
-        tipo: this.determinarTipoEvidencia(archivo),
-        url: urlCompleta,
-        nombre: evidencia.nombre || this.extraerNombreArchivo(archivo),
-        fechaSubida: evidencia.fecha_subida || evidencia.fecha_creacion || evidencia.fecha || new Date().toISOString(),
-        descripcion: evidencia.descripcion || '',
-        size: evidencia.size || 0,
-        mimeType: evidencia.mime_type || evidencia.content_type || this.determinarMimeType(archivo)
-      };
-    });
-  }
-
-  /**
-   * Construir URL completa de Cloudinary
-   */
-  private construirUrlCloudinary(imagePath: string): string {
-    if (!imagePath) return '';
-    
-    // Si ya es una URL completa, devolverla tal como está
-    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      return imagePath;
+  private transformarEvidencias(evidencias: any[]): HistorialDenuncia['evidencias'] {
+    if (!Array.isArray(evidencias)) {
+      return [];
     }
     
-    // Si es una ruta relativa, construir la URL completa de Cloudinary
-    const cloudinaryBase = 'https://res.cloudinary.com/de06451wd';
-    
-    // Limpiar la ruta (remover slash inicial si existe)
-    const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
-    
-    return `${cloudinaryBase}/${cleanPath}`;
-  }
-
-  /**
-   * Determinar MIME type basado en la extensión
-   */
-  private determinarMimeType(url: string): string {
-    if (!url) return 'application/octet-stream';
-    
-    const extension = url.split('.').pop()?.toLowerCase() || '';
-    
-    const mimeTypes: Record<string, string> = {
-      'jpg': 'image/jpeg',
-      'jpeg': 'image/jpeg',
-      'png': 'image/png',
-      'gif': 'image/gif',
-      'webp': 'image/webp',
-      'svg': 'image/svg+xml',
-      'mp4': 'video/mp4',
-      'mov': 'video/quicktime',
-      'avi': 'video/x-msvideo',
-      'webm': 'video/webm',
-      '3gp': 'video/3gpp',
-      'pdf': 'application/pdf',
-      'doc': 'application/msword',
-      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'txt': 'text/plain'
-    };
-    
-    return mimeTypes[extension] || 'application/octet-stream';
-  }
-
-  /**
-   * Transformar respuestas municipales
-   */
-  private transformarRespuestas(respuestas: any[]): any[] {
-    return respuestas.map(respuesta => ({
-      id: respuesta.id?.toString() || '',
-      autor: respuesta.autor || respuesta.autor_nombre || 'Municipalidad',
-      mensaje: respuesta.mensaje || respuesta.contenido || respuesta.texto || '',
-      fechaRespuesta: respuesta.fecha_respuesta || respuesta.fecha_creacion || new Date().toISOString(),
-      tipo: respuesta.tipo || 'respuesta',
-      esOficial: true,
-      leida: respuesta.leida || false,
-      evidencias: this.transformarEvidencias(respuesta.evidencias || [])
+    return evidencias.map((evidencia, index) => ({
+      id: evidencia.id?.toString() || index.toString(),
+      tipo: this.determinarTipoEvidencia(evidencia.extension || evidencia.archivo),
+      url: evidencia.archivo || evidencia.url || '',
+      nombre: evidencia.nombre || `Evidencia ${index + 1}`,
+      fechaSubida: evidencia.fecha || new Date().toISOString(),
+      descripcion: evidencia.descripcion || '',
+      size: evidencia.size || 0,
+      mimeType: evidencia.mime_type || evidencia.extension || ''
     }));
   }
 
   /**
    * Determinar tipo de evidencia por extensión
    */
-  private determinarTipoEvidencia(url: string): 'imagen' | 'video' | 'documento' {
-    if (!url) return 'documento';
+  private determinarTipoEvidencia(extension: string): 'imagen' | 'documento' | 'video' {
+    if (!extension) return 'documento';
     
-    const extension = url.split('.').pop()?.toLowerCase() || '';
+    const ext = extension.toLowerCase();
     
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension)) {
+    if (ext.includes('jpg') || ext.includes('jpeg') || ext.includes('png') || ext.includes('gif') || ext.includes('webp')) {
       return 'imagen';
     }
     
-    if (['mp4', 'mov', 'avi', 'webm', '3gp'].includes(extension)) {
+    if (ext.includes('mp4') || ext.includes('avi') || ext.includes('mov') || ext.includes('webm')) {
       return 'video';
     }
     
@@ -432,33 +467,56 @@ class HistorialService {
   }
 
   /**
-   * Extraer nombre de archivo de URL
+   * Transformar respuestas del sistema (no municipales)
    */
-  private extraerNombreArchivo(url: string): string {
-    if (!url) return 'archivo';
-    
-    try {
-      const segments = url.split('/');
-      const filename = segments[segments.length - 1];
-      return filename.split('?')[0] || 'archivo';
-    } catch {
-      return 'archivo';
+  private transformarRespuestas(respuestas: any[]): HistorialDenuncia['respuestas'] {
+    if (!Array.isArray(respuestas)) {
+      return [];
     }
+    
+    return respuestas.map((respuesta, index) => ({
+      id: respuesta.id?.toString() || index.toString(),
+      autor: respuesta.autor || respuesta.usuario?.nombre || 'Sistema',
+      mensaje: respuesta.mensaje || respuesta.descripcion || '',
+      fechaRespuesta: respuesta.fecha || respuesta.fecha_respuesta || new Date().toISOString(),
+      tipo: this.determinarTipoRespuesta(respuesta.tipo),
+      esOficial: respuesta.es_oficial ?? true,
+      leida: respuesta.leida ?? false,
+      evidencias: this.transformarEvidencias(respuesta.evidencias || [])
+    }));
+  }
+
+  /**
+   * Determinar tipo de respuesta
+   */
+  private determinarTipoRespuesta(tipo?: string): 'respuesta' | 'actualizacion' | 'resolucion' {
+    if (!tipo) return 'respuesta';
+    
+    const tipoLower = tipo.toLowerCase();
+    
+    if (tipoLower.includes('resolucion') || tipoLower.includes('resuelto')) return 'resolucion';
+    if (tipoLower.includes('actualizacion') || tipoLower.includes('cambio')) return 'actualizacion';
+    
+    return 'respuesta';
   }
 
   /**
    * Calcular tiempo de respuesta en días
    */
-  private calcularTiempoRespuesta(fechaCreacion: string, fechaRespuesta?: string): number | null {
-    if (!fechaRespuesta) return null;
+  private calcularTiempoRespuesta(fechaCreacion?: string, fechaPrimeraRespuesta?: string): number | null {
+    if (!fechaCreacion || !fechaPrimeraRespuesta) {
+      return null;
+    }
     
     try {
       const creacion = new Date(fechaCreacion);
-      const respuesta = new Date(fechaRespuesta);
+      const respuesta = new Date(fechaPrimeraRespuesta);
       const diferencia = respuesta.getTime() - creacion.getTime();
-      const dias = diferencia / (1000 * 60 * 60 * 24);
-      return Math.round(dias * 10) / 10;
-    } catch {
+      const dias = Math.floor(diferencia / (1000 * 60 * 60 * 24));
+      
+      return dias >= 0 ? dias : null;
+    } catch (error) {
+      console.warn('⚠️ [HISTORIAL] Error calculando tiempo de respuesta:', error);
       return null;
     }
   }
@@ -473,44 +531,50 @@ class HistorialService {
       return this.estadisticasVacias();
     }
 
+    // Contar por estado
     const resueltas = denuncias.filter(d => d.estado === 'resuelto').length;
     const pendientes = denuncias.filter(d => d.estado === 'pendiente').length;
     const enProceso = denuncias.filter(d => d.estado === 'en_proceso').length;
     const rechazadas = denuncias.filter(d => d.estado === 'rechazado').length;
     const cerradas = denuncias.filter(d => d.estado === 'cerrado').length;
 
-    // Tiempo promedio de respuesta
+    // Calcular estadísticas de tiempo de respuesta
     const tiemposRespuesta = denuncias
-      .map(d => d.tiempoRespuesta)
-      .filter((tiempo): tiempo is number => tiempo !== null);
+      .filter(d => d.tiempoRespuesta !== null && d.tiempoRespuesta !== undefined)
+      .map(d => d.tiempoRespuesta!);
     
-    const tiempoPromedio = tiemposRespuesta.length > 0
+    const tiempoPromedioRespuesta = tiemposRespuesta.length > 0 
       ? tiemposRespuesta.reduce((sum, tiempo) => sum + tiempo, 0) / tiemposRespuesta.length
       : 0;
 
-    // Satisfacción promedio
-    const satisfacciones = denuncias
-      .map(d => d.satisfaccionCiudadano)
-      .filter((satisfaccion): satisfaccion is number => satisfaccion !== null);
+    // Calcular estadísticas de satisfacción
+    const calificaciones = denuncias
+      .filter(d => d.satisfaccionCiudadano !== null && d.satisfaccionCiudadano !== undefined)
+      .map(d => d.satisfaccionCiudadano!);
     
-    const satisfaccionPromedio = satisfacciones.length > 0
-      ? satisfacciones.reduce((sum, sat) => sum + sat, 0) / satisfacciones.length
+    const satisfaccionPromedio = calificaciones.length > 0
+      ? calificaciones.reduce((sum, cal) => sum + cal, 0) / calificaciones.length
       : 0;
+
+    // Porcentaje de resolución
+    const porcentajeResolucion = total > 0 ? (resueltas / total) * 100 : 0;
 
     // Denuncias por categoría
     const denunciasPorCategoria: Record<string, number> = {};
-    denuncias.forEach(denuncia => {
-      denunciasPorCategoria[denuncia.categoria] = 
-        (denunciasPorCategoria[denuncia.categoria] || 0) + 1;
+    denuncias.forEach(d => {
+      denunciasPorCategoria[d.categoria] = (denunciasPorCategoria[d.categoria] || 0) + 1;
     });
 
-    // Denuncias por mes
+    // Denuncias por mes (últimos 12 meses)
     const denunciasPorMes: Record<string, number> = {};
-    denuncias.forEach(denuncia => {
-      const fecha = new Date(denuncia.fechaCreacion);
-      const mesAno = `${fecha.toLocaleString('es-ES', { month: 'long' })} ${fecha.getFullYear()}`;
-      denunciasPorMes[mesAno] = (denunciasPorMes[mesAno] || 0) + 1;
+    denuncias.forEach(d => {
+      const fecha = new Date(d.fechaCreacion);
+      const mes = `${fecha.getFullYear()}-${(fecha.getMonth() + 1).toString().padStart(2, '0')}`;
+      denunciasPorMes[mes] = (denunciasPorMes[mes] || 0) + 1;
     });
+
+    // Determinar tendencia (simplificado)
+    const tendencia = this.calcularTendencia(denuncias);
 
     return {
       totalDenuncias: total,
@@ -519,17 +583,47 @@ class HistorialService {
       enProceso,
       rechazadas,
       cerradas,
-      tiempoPromedioRespuesta: Math.round(tiempoPromedio * 10) / 10,
+      tiempoPromedioRespuesta: Math.round(tiempoPromedioRespuesta),
       satisfaccionPromedio: Math.round(satisfaccionPromedio * 10) / 10,
-      porcentajeResolucion: Math.round((resueltas / total) * 100),
+      porcentajeResolucion: Math.round(porcentajeResolucion),
       denunciasPorCategoria,
       denunciasPorMes,
-      tendencia: resueltas > pendientes ? 'mejorando' : resueltas === pendientes ? 'estable' : 'empeorando'
+      tendencia
     };
   }
 
   /**
-   * Retornar estadísticas vacías
+   * Calcular tendencia basada en las denuncias de los últimos meses
+   */
+  private calcularTendencia(denuncias: HistorialDenuncia[]): EstadisticasHistorial['tendencia'] {
+    const ahora = new Date();
+    const hace3Meses = new Date(ahora.getFullYear(), ahora.getMonth() - 3, 1);
+    const hace6Meses = new Date(ahora.getFullYear(), ahora.getMonth() - 6, 1);
+
+    const denunciasRecientes = denuncias.filter(d => new Date(d.fechaCreacion) >= hace3Meses);
+    const denunciasAnteriores = denuncias.filter(d => {
+      const fecha = new Date(d.fechaCreacion);
+      return fecha >= hace6Meses && fecha < hace3Meses;
+    });
+
+    if (denunciasAnteriores.length === 0) {
+      return 'sin_datos';
+    }
+
+    const resolucionReciente = denunciasRecientes.filter(d => d.estado === 'resuelto').length / denunciasRecientes.length;
+    const resolucionAnterior = denunciasAnteriores.filter(d => d.estado === 'resuelto').length / denunciasAnteriores.length;
+
+    if (resolucionReciente > resolucionAnterior + 0.1) {
+      return 'mejorando';
+    } else if (resolucionReciente < resolucionAnterior - 0.1) {
+      return 'empeorando';
+    } else {
+      return 'estable';
+    }
+  }
+
+  /**
+   * Estadísticas vacías por defecto
    */
   private estadisticasVacias(): EstadisticasHistorial {
     return {
@@ -551,4 +645,3 @@ class HistorialService {
 
 // Exportar instancia singleton
 export const historialService = new HistorialService();
-export default historialService;

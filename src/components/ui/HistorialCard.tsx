@@ -1,12 +1,13 @@
-// src/components/ui/HistorialCard.tsx - VERSIÓN PULIDA CON TAMA GUI
+// src/components/ui/HistorialCard.tsx
 import React, { useState } from 'react'
-import { TouchableOpacity, Image } from 'react-native'
+import { Image } from 'react-native'
 import { Text, YStack, XStack, Card, styled } from 'tamagui'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { HistorialDenuncia, Evidencia } from '../../types/historial'
 import { formatearFecha, getEstadoColor, getEstadoTexto } from '../../utils/formatters'
-import { StatusChip } from './statusChip'
+import { StatusChip } from './statusChip' // Asegúrate de tener el componente StatusChip.tsx
+
 interface HistorialCardProps {
   denuncia: HistorialDenuncia
   onPress?: (denuncia: HistorialDenuncia) => void
@@ -15,7 +16,7 @@ interface HistorialCardProps {
   isLast?: boolean
 }
 
-// ====== PRIMITIVAS DE ESTILO (consistentes con tus tokens) ======
+// ====== PRIMITIVAS DE ESTILO ======
 const Surface = styled(Card, {
   backgroundColor: '$surface',
   borderRadius: '$4',
@@ -35,33 +36,12 @@ const Chip = styled(XStack, {
   borderRadius: 999,
   alignItems: 'center',
   gap: '$2',
-  variants: {
-    tone: {
-      primary: { backgroundColor: '$primary' },
-      secondary: { backgroundColor: '$secondary' },
-      success: { backgroundColor: '$success' },
-      warning: { backgroundColor: '$warning' },
-      info: { backgroundColor: '$info' },
-      muted: { backgroundColor: '$gray2' },
-      custom: {} as any, // permite pasar style inline (ej: backgroundColor dinámico)
-    },
-    contrast: {
-      light: {},
-      dark: {},
-    },
-  } as const,
 })
 
 const ChipText = styled(Text, {
   fontSize: '$2',
   fontWeight: '700',
   color: '$textSecondary',
-  variants: {
-    invert: {
-      true: { color: 'white' },
-      false: { color: '$textSecondary' },
-    },
-  } as const,
 })
 
 const Title = styled(Text, {
@@ -76,48 +56,29 @@ const Meta = styled(Text, {
   color: '$textSecondary',
 })
 
-const CircleBtn = styled(TouchableOpacity, {
+const CircleBtn = styled(Card, {
   width: 40,
   height: 40,
   borderRadius: 20,
   justifyContent: 'center',
   alignItems: 'center',
   backgroundColor: 'rgba(0,0,0,0.55)',
+  pressStyle: { scale: 0.96 },
+  cursor: 'pointer',
 })
 
 // ====== HELPERS ======
-// Construir URL completa de Cloudinary
 const construirUrlCompleta = (rutaRelativa: string): string => {
   if (!rutaRelativa) return ''
   if (rutaRelativa.startsWith('http')) return rutaRelativa
   return `https://res.cloudinary.com/de06451wd/${rutaRelativa}`
 }
 
-// Normalizar colores del estado (usa tu getEstadoColor)
 const normalizeEstadoColors = (estado: HistorialDenuncia['estado']) => {
   const raw: any = getEstadoColor(estado)
-
-  if (typeof raw === 'object' && raw?.main) {
-    return {
-      main: raw.main,
-      border: raw.border || 'rgba(0,0,0,0.08)',
-      shadow: raw.shadow || 'rgba(0,0,0,0.25)',
-    }
-  }
-
-  if (typeof raw === 'string') {
-    return {
-      main: raw,
-      border: 'rgba(0,0,0,0.08)',
-      shadow: 'rgba(0,0,0,0.25)',
-    }
-  }
-
-  return {
-    main: 'rgba(107,114,128,0.8)',
-    border: 'rgba(107,114,128,1)',
-    shadow: 'rgba(107,114,128,0.4)',
-  }
+  if (typeof raw === 'object' && raw?.main) return { main: raw.main, border: raw.border || 'rgba(0,0,0,0.08)' }
+  if (typeof raw === 'string') return { main: raw, border: 'rgba(0,0,0,0.08)' }
+  return { main: 'rgba(107,114,128,0.8)', border: 'rgba(107,114,128,1)' }
 }
 
 // ====== EVIDENCIA (solo imagen / doc / video), sin overlay de texto ======
@@ -138,16 +99,18 @@ const EvidenciaDisplay: React.FC<{
 
   const evidenciaActual = evidencias[indiceActual]
   const totalEvidencias = evidencias.length
-
-  const goPrev = () => setIndiceActual((prev) => Math.max(0, prev - 1))
-  const goNext = () => setIndiceActual((prev) => Math.min(totalEvidencias - 1, prev + 1))
+  const goPrev = () => setIndiceActual((p) => Math.max(0, p - 1))
+  const goNext = () => setIndiceActual((p) => Math.min(totalEvidencias - 1, p + 1))
 
   return (
     <YStack flex={1} position="relative" height={160}>
-      <TouchableOpacity
+      <Card
         onPress={() => onEvidenciaPress?.(evidenciaActual)}
+        backgroundColor="$surface"
+        pressStyle={{ scale: 0.995 }}
+        cursor="pointer"
         style={{ flex: 1 }}
-        activeOpacity={0.92}
+        accessibilityRole="imagebutton"
         accessibilityLabel={`Evidencia ${indiceActual + 1} de ${totalEvidencias}`}
       >
         {evidenciaActual.tipo === 'imagen' ? (
@@ -157,16 +120,10 @@ const EvidenciaDisplay: React.FC<{
             resizeMode="cover"
           />
         ) : (
-          // Vista para documentos/videos
           <YStack flex={1} justifyContent="center" alignItems="center" backgroundColor="$gray2" gap="$3">
             <Card backgroundColor="$gray6" padding="$4" borderRadius="$4">
-              <Ionicons
-                name={evidenciaActual.tipo === 'video' ? 'videocam' : 'document-text'}
-                size={48}
-                color="#666"
-              />
+              <Ionicons name={evidenciaActual.tipo === 'video' ? 'videocam' : 'document-text'} size={48} color="#666" />
             </Card>
-
             <YStack alignItems="center" gap="$1" maxWidth="80%">
               <Text fontSize="$4" fontWeight="700" color="$textPrimary" textAlign="center" numberOfLines={2}>
                 {evidenciaActual.nombre}
@@ -176,7 +133,6 @@ const EvidenciaDisplay: React.FC<{
                 {evidenciaActual.size && ` • ${Math.round(evidenciaActual.size / 1024)} KB`}
               </Meta>
             </YStack>
-
             <Card backgroundColor="$primary" paddingHorizontal="$4" paddingVertical="$2" borderRadius="$3">
               <XStack alignItems="center" gap="$2">
                 <Ionicons name={evidenciaActual.tipo === 'video' ? 'play' : 'open'} size={16} color="white" />
@@ -187,12 +143,10 @@ const EvidenciaDisplay: React.FC<{
             </Card>
           </YStack>
         )}
-      </TouchableOpacity>
+      </Card>
 
-      {/* Controles y dots SOLO si hay múltiples evidencias (sin texto) */}
       {totalEvidencias > 1 && (
         <>
-          {/* Flecha anterior */}
           {indiceActual > 0 && (
             <CircleBtn
               onPress={goPrev}
@@ -202,8 +156,6 @@ const EvidenciaDisplay: React.FC<{
               <Ionicons name="chevron-back" size={20} color="white" />
             </CircleBtn>
           )}
-
-          {/* Flecha siguiente */}
           {indiceActual < totalEvidencias - 1 && (
             <CircleBtn
               onPress={goNext}
@@ -214,30 +166,29 @@ const EvidenciaDisplay: React.FC<{
             </CircleBtn>
           )}
 
-          {/* Degradado inferior para legibilidad de los dots */}
+          {/* Degradado inferior + dots (sin texto) */}
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.55)']}
             style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 36 }}
           />
-
-          {/* Dots de paginación */}
           <XStack
             position="absolute"
             bottom="$2"
             left="50%"
             gap="$1.5"
-            // centrado aproximado: 10px por dot (8px + gap)
             style={{ transform: [{ translateX: -((totalEvidencias * 10) / 2) }] }}
           >
             {evidencias.map((_, index) => (
-              <TouchableOpacity key={index} onPress={() => setIndiceActual(index)} activeOpacity={0.8}>
-                <Card
-                  width={8}
-                  height={8}
-                  borderRadius="$10"
-                  backgroundColor={index === indiceActual ? 'white' : 'rgba(255,255,255,0.4)'}
-                />
-              </TouchableOpacity>
+              <Card
+                key={index}
+                onPress={() => setIndiceActual(index)}
+                pressStyle={{ scale: 0.9 }}
+                width={8}
+                height={8}
+                borderRadius="$10"
+                backgroundColor={index === indiceActual ? 'white' : 'rgba(255,255,255,0.4)'}
+                cursor="pointer"
+              />
             ))}
           </XStack>
         </>
@@ -254,20 +205,15 @@ export default function HistorialCard({
   isFirst,
   isLast,
 }: HistorialCardProps) {
-  // Respuestas
   const respuestasNoLeidas = denuncia.respuestas?.filter((r) => !r.leida).length || 0
-
-  // Colores del estado
   const estadoColors = normalizeEstadoColors(denuncia.estado)
 
-  // Tiempo transcurrido
   const calcularTiempoTranscurrido = (fecha: string): string => {
     try {
-      const fechaCreacion = new Date(fecha)
-      const ahora = new Date()
-      const diferencia = ahora.getTime() - fechaCreacion.getTime()
-      const dias = Math.floor(diferencia / (1000 * 60 * 60 * 24))
-
+      const f = new Date(fecha)
+      const now = new Date()
+      const diff = now.getTime() - f.getTime()
+      const dias = Math.floor(diff / (1000 * 60 * 60 * 24))
       if (dias === 0) return 'Hoy'
       if (dias === 1) return 'Ayer'
       if (dias < 7) return `Hace ${dias} días`
@@ -278,71 +224,80 @@ export default function HistorialCard({
     }
   }
 
+  // onPress funciona en Surface (Tamagui) para habilitar pressStyle
+  const handleCardPress = () => {
+    onPress?.(denuncia)
+  }
+
   return (
-    <TouchableOpacity onPress={() => onPress?.(denuncia)} activeOpacity={0.9}>
-      <Surface
-        pressStyle={{ scale: 0.98 }}
-        style={{
-          ...(isFirst && { marginTop: 8 }),
-          ...(isLast && { marginBottom: 24 }),
-        }}
-      >
-        <YStack gap="$3">
-          {/* Fila Superior: Código y Estado */}
-          <XStack justifyContent="space-between" alignItems="center">
-            <Chip tone="muted">
-              <Ionicons name="pricetag-outline" size={14} color="#6b7280" />
-              <ChipText># {denuncia.codigo || denuncia.id}</ChipText>
-            </Chip>
+    <Surface
+      onPress={handleCardPress}
+      animation="quick"
+      pressStyle={{ scale: 0.98, shadowRadius: 4 }}
+      hoverStyle={{ y: -1, shadowRadius: 10 }}
+      focusStyle={{ outlineWidth: 0 }}
+      cursor="pointer"
+      accessibilityRole="button"
+      accessibilityLabel={`Abrir ${denuncia.titulo || 'denuncia'}`}
+      style={{
+        ...(isFirst && { marginTop: 8 }),
+        ...(isLast && { marginBottom: 24 }),
+      }}
+    >
+      <YStack gap="$3">
+        {/* Fila Superior: Código y Estado */}
+        <XStack justifyContent="space-between" alignItems="center">
+          <Chip>
+            <Ionicons name="pricetag-outline" size={14} color="#6b7280" />
+            <ChipText># {denuncia.codigo || denuncia.id}</ChipText>
+          </Chip>
 
-           <StatusChip estado={getEstadoTexto(denuncia.estado)}  size="sm" />
-          </XStack>
+          {/* Estado con paleta municipal */}
+          <StatusChip estado={getEstadoTexto(denuncia.estado)} variant="soft" size="sm" />
+        </XStack>
 
-          {/* Título + tiempo */}
-          <XStack justifyContent="space-between" alignItems="flex-start" gap="$3">
-            <YStack flex={1}>
-              <Title numberOfLines={2}>{denuncia.titulo || 'Sin título'}</Title>
-            </YStack>
+        {/* Título + tiempo */}
+        <XStack justifyContent="space-between" alignItems="flex-start" gap="$3">
+          <YStack flex={1}>
+            <Title numberOfLines={2}>{denuncia.titulo || 'Sin título'}</Title>
+          </YStack>
 
-            <Chip tone="muted">
-              <Ionicons name="time-outline" size={14} color="#6b7280" />
-              <ChipText>{calcularTiempoTranscurrido(denuncia.fechaCreacion)}</ChipText>
-            </Chip>
-          </XStack>
+          <Chip>
+            <Ionicons name="time-outline" size={14} color="#6b7280" />
+            <ChipText>{calcularTiempoTranscurrido(denuncia.fechaCreacion)}</ChipText>
+          </Chip>
+        </XStack>
 
-          {/* Evidencia principal */}
-          <Card borderRadius="$3" borderWidth={1} borderColor="$gray6" overflow="hidden">
-            <EvidenciaDisplay evidencias={denuncia.evidencias || []} onEvidenciaPress={onEvidenciaPress} />
+        {/* Evidencia principal */}
+        <Card borderRadius="$3" borderWidth={1} borderColor="$gray6" overflow="hidden">
+          <EvidenciaDisplay evidencias={denuncia.evidencias || []} onEvidenciaPress={onEvidenciaPress} />
+        </Card>
+
+        {/* Dirección y categoría */}
+        <XStack gap="$3">
+          <Chip style={{ flex: 1 }}>
+            <Ionicons name="location-outline" size={14} color="#6b7280" />
+            <ChipText numberOfLines={1}>{denuncia.ubicacion?.direccion || 'Sin ubicación'}</ChipText>
+          </Chip>
+
+          <Chip style={{ backgroundColor: '$secondary' }}>
+            <Ionicons name="folder-outline" size={14} color="white" />
+            <Text style={{ color: 'white', fontSize: 12, fontWeight: '800' }}>{denuncia.categoria}</Text>
+          </Chip>
+        </XStack>
+
+        {/* Indicador de nuevas respuestas */}
+        {respuestasNoLeidas > 0 && (
+          <Card backgroundColor="$red2" borderColor="$red10" borderWidth={1} padding="$3" borderRadius="$3">
+            <XStack alignItems="center" gap="$2">
+              <Ionicons name="notifications" size={14} color="#dc2626" />
+              <Text fontSize="$2" color="$red10" fontWeight="700">
+                {respuestasNoLeidas === 1 ? 'Nueva respuesta disponible' : `${respuestasNoLeidas} respuestas nuevas`}
+              </Text>
+            </XStack>
           </Card>
-
-          {/* Dirección y categoría */}
-          <XStack gap="$3">
-            <Chip tone="muted" flex={1}>
-              <Ionicons name="location-outline" size={14} color="#6b7280" />
-              <ChipText numberOfLines={1}>{denuncia.ubicacion?.direccion || 'Sin ubicación'}</ChipText>
-            </Chip>
-
-            <Chip tone="secondary">
-              <Ionicons name="folder-outline" size={14} color="white" />
-              <ChipText invert>{denuncia.categoria}</ChipText>
-            </Chip>
-          </XStack>
-
-          {/* Indicador de nuevas respuestas */}
-          {respuestasNoLeidas > 0 && (
-            <Card backgroundColor="$red2" borderColor="$red10" borderWidth={1} padding="$3" borderRadius="$3">
-              <XStack alignItems="center" gap="$2">
-                <Ionicons name="notifications" size={14} color="#dc2626" />
-                <Text fontSize="$2" color="$red10" fontWeight="700">
-                  {respuestasNoLeidas === 1
-                    ? 'Nueva respuesta disponible'
-                    : `${respuestasNoLeidas} respuestas nuevas`}
-                </Text>
-              </XStack>
-            </Card>
-          )}
-        </YStack>
-      </Surface>
-    </TouchableOpacity>
+        )}
+      </YStack>
+    </Surface>
   )
 }

@@ -1,8 +1,8 @@
-// src/components/forms/MapSelector.tsx
+// src/components/forms/MapSelector.tsx - CON GOOGLE MAPS HABILITADO
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert, Platform } from 'react-native';
 import { Text, YStack, XStack, Button, Card, H4 } from 'tamagui';
-import MapView, { Marker, Region } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // CON GOOGLE PROVIDER
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -32,76 +32,57 @@ const MapSelector: React.FC<MapSelectorProps> = ({
   onClose,
   initialLocation,
 }) => {
-  const [selectedLocation, setSelectedLocation] = useState<{
-    latitud: number;
-    longitud: number;
-  } | null>(initialLocation || null);
+  const [selectedLocation, setSelectedLocation] = useState(initialLocation || null);
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const [loadingAddress, setLoadingAddress] = useState(false);
 
-  const [region, setRegion] = useState<Region>(CALAMA_DEFAULT);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
-
-  useEffect(() => {
-    if (initialLocation) {
-      setRegion({
-        latitude: initialLocation.latitud,
-        longitude: initialLocation.longitud,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
-      });
-      setSelectedLocation(initialLocation);
-    }
-  }, [initialLocation]);
+  console.log('🗺️ MapSelector renderizado con initialLocation:', initialLocation);
 
   const getCurrentLocation = async () => {
-    setIsGettingLocation(true);
+    console.log('📍 Solicitando ubicación actual...');
+    setGettingLocation(true);
+    
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-
+      
       if (status !== 'granted') {
-        Alert.alert(
-          'Permisos requeridos',
-          'Para usar el GPS necesitamos acceso a tu ubicación'
-        );
-        setIsGettingLocation(false);
+        Alert.alert('Permisos', 'Necesitamos acceso a tu ubicación');
         return;
       }
 
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
+        accuracy: Location.Accuracy.Balanced,
       });
 
-      const { latitude, longitude } = location.coords;
+      console.log('✅ Ubicación obtenida:', location.coords);
 
-      const newRegion = {
-        latitude,
-        longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      };
-
-      setRegion(newRegion);
-      setSelectedLocation({ latitud: latitude, longitud: longitude });
+      setSelectedLocation({
+        latitud: location.coords.latitude,
+        longitud: location.coords.longitude,
+      });
 
     } catch (error) {
-      Alert.alert(
-        'Error de GPS',
-        'No pudimos obtener tu ubicación actual'
-      );
+      console.error('❌ Error obteniendo ubicación:', error);
+      Alert.alert('Error', 'No se pudo obtener tu ubicación');
     } finally {
-      setIsGettingLocation(false);
+      setGettingLocation(false);
     }
   };
 
   const handleMapPress = (event: any) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
+    console.log('👆 Usuario tocó el mapa:', { latitude, longitude });
     setSelectedLocation({ latitud: latitude, longitud: longitude });
   };
 
-  const handleConfirmLocation = async () => {
+  const confirmLocation = async () => {
     if (!selectedLocation) {
-      Alert.alert('Selecciona una ubicación', 'Toca el mapa para marcar una ubicación');
+      Alert.alert('Error', 'Selecciona una ubicación primero');
       return;
     }
+
+    console.log('🔄 Confirmando ubicación:', selectedLocation);
+    setLoadingAddress(true);
 
     try {
       const addresses = await Location.reverseGeocodeAsync({
@@ -109,40 +90,37 @@ const MapSelector: React.FC<MapSelectorProps> = ({
         longitude: selectedLocation.longitud,
       });
 
-      let address = '';
+      let address = 'Ubicación seleccionada';
       if (addresses.length > 0) {
         const addr = addresses[0];
-        address = `${addr.street || ''} ${addr.streetNumber || ''}, ${addr.district || ''}, Calama`.trim();
+        address = `${addr.street || ''} ${addr.streetNumber || ''}, Calama`.trim();
       }
+
+      console.log('✅ Dirección obtenida:', address);
 
       onLocationSelect({
         ...selectedLocation,
-        address: address || 'Ubicación seleccionada en mapa',
+        address,
       });
+
     } catch (error) {
+      console.error('⚠️ Error en geocodificación:', error);
       onLocationSelect({
         ...selectedLocation,
-        address: 'Ubicación seleccionada en mapa',
+        address: 'Ubicación seleccionada',
       });
+    } finally {
+      setLoadingAddress(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header del modal */}
-      <Card
-        bg="$municipal"
-        p="$4"
-        style={styles.header}
-      >
+      {/* Header */}
+      <Card bg="$municipal" p="$4">
         <XStack jc="space-between" ai="center">
           <H4 color="white">Seleccionar Ubicación</H4>
-          <Button
-            size="$3"
-            circular
-            bg="rgba(255,255,255,0.2)"
-            onPress={onClose}
-          >
+          <Button size="$3" circular bg="rgba(255,255,255,0.2)" onPress={onClose}>
             <Ionicons name="close" size={20} color="white" />
           </Button>
         </XStack>
@@ -150,22 +128,35 @@ const MapSelector: React.FC<MapSelectorProps> = ({
 
       {/* Instrucciones */}
       <Card bg="white" p="$3" mx="$3" mt="$2">
+        <Text fontSize="$4" color="$success" textAlign="center" fontWeight="bold">
+          ✅ MAPA FUNCIONANDO - GOOGLE MAPS
+        </Text>
         <Text fontSize="$3" color="$textSecondary" textAlign="center">
-          📍 Toca el mapa para seleccionar la ubicación de tu denuncia
+          📍 Toca el mapa para marcar la ubicación
         </Text>
       </Card>
 
-      {/* Mapa */}
+      {/* Mapa - CON GOOGLE PROVIDER */}
       <View style={styles.mapContainer}>
         <MapView
           style={styles.map}
-          region={region}
+          provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined} // ← GOOGLE HABILITADO
+          initialRegion={initialLocation ? {
+            latitude: initialLocation.latitud,
+            longitude: initialLocation.longitud,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          } : CALAMA_DEFAULT}
           onPress={handleMapPress}
+          onMapReady={() => {
+            console.log('✅ Google Maps cargado correctamente');
+          }}
           showsUserLocation={true}
-          showsMyLocationButton={false}
-          showsCompass={true}
-          showsScale={true}
           mapType="standard"
+          zoomEnabled={true}
+          scrollEnabled={true}
+          pitchEnabled={false}
+          rotateEnabled={false}
         >
           {selectedLocation && (
             <Marker
@@ -174,81 +165,67 @@ const MapSelector: React.FC<MapSelectorProps> = ({
                 longitude: selectedLocation.longitud,
               }}
               title="Ubicación seleccionada"
-              description="Ubicación de la denuncia"
               pinColor="#E67E22"
             />
           )}
         </MapView>
 
         {/* Botón GPS flotante */}
-        <View style={styles.gpsButtonContainer}>
+        <View style={styles.floatingButton}>
           <Button
             size="$4"
             circular
             bg="$primary"
             onPress={getCurrentLocation}
-            disabled={isGettingLocation}
-            style={styles.gpsButton}
+            disabled={gettingLocation}
           >
-            <Ionicons
-              name={isGettingLocation ? "hourglass" : "locate"}
-              size={24}
-              color="white"
+            <Ionicons 
+              name={gettingLocation ? "refresh" : "locate"} 
+              size={24} 
+              color="white" 
             />
           </Button>
         </View>
       </View>
 
-      {/* Información de ubicación seleccionada */}
+      {/* Info de ubicación */}
       {selectedLocation && (
         <Card bg="white" p="$3" mx="$3">
-          <YStack gap="$2">
-            <Text fontSize="$4" fontWeight="bold" color="$textPrimary">
-              Ubicación seleccionada:
-            </Text>
-            <Text fontSize="$3" color="$textSecondary">
-              Lat: {selectedLocation.latitud.toFixed(6)}
-            </Text>
-            <Text fontSize="$3" color="$textSecondary">
-              Lng: {selectedLocation.longitud.toFixed(6)}
-            </Text>
-          </YStack>
+          <Text fontSize="$4" fontWeight="bold" color="$success">
+            ✅ Ubicación marcada correctamente
+          </Text>
+          <Text fontSize="$3" color="$textSecondary">
+            Lat: {selectedLocation.latitud.toFixed(6)}
+          </Text>
+          <Text fontSize="$3" color="$textSecondary">
+            Lng: {selectedLocation.longitud.toFixed(6)}
+          </Text>
         </Card>
       )}
 
       {/* Botones de acción */}
       <Card bg="white" p="$4" mx="$3" mb="$3">
         <XStack gap="$3">
-          <Button
-            f={1}
-            size="$4"
-            bg="$textDisabled"
-            color="$textPrimary"
-            onPress={onClose}
-          >
+          <Button f={1} size="$4" bg="$gray8" color="white" onPress={onClose}>
             Cancelar
           </Button>
-
-          <Button
-            f={2}
-            size="$4"
-            bg="$primary"
-            color="white"
-            fontWeight="bold"
-            onPress={handleConfirmLocation}
-            disabled={!selectedLocation}
-            style={{
-              shadowColor: '#E67E22',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.3,
-              shadowRadius: 4,
-              elevation: 5,
-            }}
+          
+          <Button 
+            f={2} 
+            size="$4" 
+            bg="$primary" 
+            color="white" 
+            onPress={confirmLocation}
+            disabled={!selectedLocation || loadingAddress}
           >
-            <Ionicons name="checkmark-circle" size={20} color="white" />
-            <Text color="white" fontWeight="bold" ml="$2">
-              Confirmar Ubicación
-            </Text>
+            {loadingAddress ? (
+              <Text color="white">Procesando...</Text>
+            ) : (
+              <>
+                <Ionicons name="checkmark" size={20} color="white" />
+                <Text color="white" ml="$2">Confirmar</Text>
+              </>
+            )}
           </Button>
         </XStack>
       </Card>
@@ -261,38 +238,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAFAFA',
   },
-  header: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
   mapContainer: {
     flex: 1,
     margin: 12,
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    position: 'relative',
   },
   map: {
     flex: 1,
   },
-  gpsButtonContainer: {
+  floatingButton: {
     position: 'absolute',
     bottom: 20,
     right: 20,
-  },
-  gpsButton: {
-    shadowColor: '#E67E22',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
   },
 });
 

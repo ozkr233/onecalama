@@ -37,6 +37,8 @@ export const ENDPOINTS = {
     PROFILE: '/usuarios/',               // Endpoint del perfil de usuario
   },
 
+  
+
   // Datos maestros - NOMBRES EXACTOS DE TU BACKEND
   CATEGORIAS: '/categorias/',                        // ✅ v1/categorias/
   DEPARTAMENTOS: '/departamentos-municipales/',      // ✅ v1/departamentos-municipales/
@@ -139,4 +141,20 @@ export const RESPUESTAS_CONFIG = {
   PUNTUACION_MAX: 5,
   ITEMS_PER_PAGE: 15,
   AUTO_REFRESH_INTERVAL: 5 * 60 * 1000, // 5 minutos
+} as const;
+
+export const UPLOAD_CONFIG = {
+  MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB por archivo
+  EVIDENCIAS: {
+    MAX_COUNT: 5, // Máximo 5 evidencias por publicación
+    ALLOWED_TYPES: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic'],
+    ALLOWED_EXTENSIONS: ['jpg', 'jpeg', 'png', 'webp', 'heic'],
+    MIN_DIMENSIONS: { width: 100, height: 100 },
+    MAX_DIMENSIONS: { width: 4000, height: 4000 },
+    QUALITY_COMPRESSION: 0.8,
+  },
+  TIMEOUT: {
+    UPLOAD_SINGLE: 30000, // 30 segundos por archivo
+    UPLOAD_MULTIPLE: 120000, // 2 minutos para múltiples archivos
+  }
 } as const;

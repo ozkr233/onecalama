@@ -229,6 +229,54 @@ export default function HistorialCard({
     onPress?.(denuncia)
   }
 
+  function buildDireccion(pub: any): string {
+  const partes: string[] = [];
+
+  // 1) Fuentes “obvias”
+  if (pub?.nombre_calle) partes.push(String(pub.nombre_calle));
+  if (pub?.numero_calle) partes.push(String(pub.numero_calle));
+
+  // 2) Variantes comunes del backend
+  const posiblesStrings = [
+    pub?.direccion,
+    pub?.direccion_texto,
+    pub?.direccion_completa,
+    pub?.referencias, // a veces el usuario pone la descripción del lugar aquí
+    pub?.ubicacion?.direccion,
+    pub?.ubicacion?.address,
+    pub?.ubicacion?.descripcion,
+    typeof pub?.ubicacion === 'string' ? pub.ubicacion : undefined,
+  ].filter(Boolean) as string[];
+
+  // Toma la primera no vacía que no sea redundante
+  for (const s of posiblesStrings) {
+    const clean = String(s).trim();
+    if (clean && !partes.includes(clean)) {
+      partes.push(clean);
+      break;
+    }
+  }
+
+  // 3) Junta vecinal / sector
+  if (pub?.junta_vecinal?.villa) partes.push(String(pub.junta_vecinal.villa));
+
+  // 4) Si no hay nada legible, cae a coordenadas (si existen)
+  if (partes.length === 0) {
+    const lat = pub?.latitud ?? pub?.lat ?? pub?.ubicacion?.latitud ?? pub?.ubicacion?.lat;
+    const lng = pub?.longitud ?? pub?.lng ?? pub?.lon ?? pub?.ubicacion?.longitud ?? pub?.ubicacion?.lng ?? pub?.ubicacion?.lon;
+
+    const toN = (v: any) =>
+      typeof v === 'number' ? v : typeof v === 'string' ? parseFloat(v) : NaN;
+
+    if (Number.isFinite(toN(lat)) && Number.isFinite(toN(lng))) {
+      // último recurso: muestra lat/lng con 5 decimales
+      return `(${toN(lat).toFixed(5)}, ${toN(lng).toFixed(5)})`;
+    }
+  }
+
+  return partes.length ? partes.join(' ') : 'Dirección no especificada';
+}
+
   return (
     <Surface
       onPress={handleCardPress}

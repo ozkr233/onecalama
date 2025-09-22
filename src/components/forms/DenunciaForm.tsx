@@ -135,6 +135,10 @@ const handleLocationSelect = (location: {
     formData.departamento
   );
 
+  function handleAISuggestion(suggestions: Partial<DenunciaFormData>): void {
+    throw new Error('Function not implemented.');
+  }
+
   return (
     <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
       <YStack gap="$4" p="$4" pb="$6">
@@ -162,7 +166,7 @@ const handleLocationSelect = (location: {
           <YStack gap="$3">
             {/* Categoría - Ahora primero */}
             <YStack gap="$2">
-              <Text fontSize="$4" fontWeight="bold" color="$textPrimary">
+              <Text fontSize="$4" color="$textPrimary">
                 Categoría del Problema *
               </Text>
               <Selector
@@ -182,7 +186,7 @@ const handleLocationSelect = (location: {
 
             {/* Departamento -*/}
             <YStack gap="$2">
-              <Text fontSize="$4" fontWeight="bold" color="$textPrimary">
+              <Text fontSize="$4" color="$textPrimary">
                 Departamento Municipal
               </Text>
 
@@ -274,7 +278,7 @@ const handleLocationSelect = (location: {
         <Card elevate p="$3" gap="$2">
           <XStack ai="center" gap="$2">
             <Ionicons name="information-circle" size={18} color="#667eea" />
-            <Text fontSize="$4" fontWeight="bold" color="#667eea">
+            <Text fontSize="$4" color="#667eea">
               Información importante
             </Text>
           </XStack>

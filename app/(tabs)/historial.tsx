@@ -99,7 +99,7 @@ export default function HistorialScreen() {
     >
       <XStack alignItems="center" gap="$2">
         <Ionicons 
-          name={isBackendConnected ? "wifi" : "wifi-off"} 
+          name={isBackendConnected ? "cloud-done" : "cloud-offline"} 
           size={16} 
           color={isBackendConnected ? "#22c55e" : "#ef4444"} 
         />
@@ -150,7 +150,7 @@ export default function HistorialScreen() {
   const ErrorState = () => (
     <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" gap="$4">
       <Ionicons name="alert-circle" size={64} color="#ef4444" />
-      <Text fontSize="$5" fontWeight="bold" color="$red11" textAlign="center">
+      <Text fontSize="$5" fontWeight="heavy" color="$red11" textAlign="center">
         Error al cargar historial
       </Text>
       <Text fontSize="$3" color="$gray9" textAlign="center">
@@ -167,7 +167,7 @@ export default function HistorialScreen() {
   const EmptyState = () => (
     <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" gap="$4">
       <Ionicons name="document-text-outline" size={64} color="#ccc" />
-      <Text fontSize="$5" fontWeight="bold" color="$gray11" textAlign="center">
+      <Text fontSize="$5" fontWeight="heavy" color="$gray11" textAlign="center">
         No hay denuncias aún
       </Text>
       <Text fontSize="$3" color="$gray9" textAlign="center">
@@ -187,7 +187,6 @@ export default function HistorialScreen() {
       {estadisticas && hayDatos && (
         <ResumenEstadistico 
           estadisticas={estadisticas}
-          loading={loading}
         />
       )}
 

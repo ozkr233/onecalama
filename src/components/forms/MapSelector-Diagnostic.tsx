@@ -340,13 +340,13 @@ const MapSelector: React.FC<MapSelectorProps> = ({
         <Card bg="white" p="$3" mx="$3">
           <YStack gap="$2">
             <XStack jc="space-between" ai="center">
-              <Text fontSize="$4" fontWeight="bold" color="$textPrimary">
+              <Text fontSize="$4" fontWeight="heavy" color="$textPrimary">
                 📍 Ubicación seleccionada
               </Text>
               {isLocationInCalama(selectedLocation.latitud, selectedLocation.longitud) ? (
-                <Text fontSize="$2" color="$success" fontWeight="bold">✓ En Calama</Text>
+                <Text fontSize="$2" color="$success" fontWeight="heavy">✓ En Calama</Text>
               ) : (
-                <Text fontSize="$2" color="$warning" fontWeight="bold">⚠ Fuera de Calama</Text>
+                <Text fontSize="$2" color="$warning" fontWeight="heavy">⚠ Fuera de Calama</Text>
               )}
             </XStack>
             <Text fontSize="$3" color="$textSecondary">
@@ -375,7 +375,7 @@ const MapSelector: React.FC<MapSelectorProps> = ({
             size="$4"
             bg="$primary"
             color="white"
-            fontWeight="bold"
+            fontWeight="heavy"
             onPress={handleConfirmLocation}
             disabled={!selectedLocation || isLoadingAddress}
             style={{
@@ -391,7 +391,7 @@ const MapSelector: React.FC<MapSelectorProps> = ({
             ) : (
               <Ionicons name="checkmark-circle" size={20} color="white" />
             )}
-            <Text color="white" fontWeight="bold" ml="$2">
+            <Text color="white" fontWeight="heavy" ml="$2">
               {isLoadingAddress ? 'Obteniendo dirección...' : 'Confirmar Ubicación'}
             </Text>
           </Button>

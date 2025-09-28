@@ -1,10 +1,9 @@
 // src/components/ui/Loading.tsx - COMPONENTE DE CARGA
 import React from 'react';
-import { ActivityIndicator } from 'react-native';
-import { YStack, Text, XStack } from 'tamagui';
+import { YStack, Text, XStack, Spinner } from 'tamagui';
 
 interface LoadingSpinnerProps {
-  size?: 'small' | 'large';
+  size?: '$2' | '$4' | '$6' | '$8'| 'small' | 'large';
   color?: string;
   text?: string;
   overlay?: boolean;
@@ -12,13 +11,13 @@ interface LoadingSpinnerProps {
 
 export default function LoadingSpinner({
   size = 'large',
-  color = '#3B82F6',
+  color = '$blue10',
   text,
   overlay = false
 }: LoadingSpinnerProps) {
   const content = (
     <YStack alignItems="center" justifyContent="center" space="$3">
-      <ActivityIndicator size={size} color={color} />
+      <Spinner size={size} color={color} />
       {text && (
         <Text fontSize="$3" color="$gray10" textAlign="center">
           {text}
@@ -41,7 +40,7 @@ export default function LoadingSpinner({
         zIndex={1000}
       >
         <YStack
-          backgroundColor="white"
+          backgroundColor="$background"
           padding="$6"
           borderRadius="$4"
           shadowColor="$shadowColor"
@@ -63,20 +62,20 @@ interface LoadingButtonProps {
   loading: boolean;
   children: React.ReactNode;
   loadingText?: string;
-  size?: 'small' | 'large';
+  size?: '$2' | '$4' | '$6';
 }
 
 export function LoadingButton({
   loading,
   children,
   loadingText = 'Cargando...',
-  size = 'small'
+  size = '$4'
 }: LoadingButtonProps) {
   if (loading) {
     return (
       <XStack alignItems="center" justifyContent="center" space="$2">
-        <ActivityIndicator size={size} color="white" />
-        <Text color="white">{loadingText}</Text>
+        <Spinner size={size} color="$color" />
+        <Text color="$color">{loadingText}</Text>
       </XStack>
     );
   }
@@ -88,7 +87,7 @@ export function LoadingButton({
 export function ListLoadingState() {
   return (
     <YStack padding="$6" alignItems="center" space="$3">
-      <ActivityIndicator size="large" color="#3B82F6" />
+      <Spinner size="small" color="$blue10" />
       <Text fontSize="$3" color="$gray10">
         Cargando datos...
       </Text>
@@ -100,7 +99,7 @@ export function ListLoadingState() {
 export function RefreshLoadingState() {
   return (
     <YStack padding="$4" alignItems="center">
-      <ActivityIndicator size="small" color="#3B82F6" />
+      <Spinner size="small" color="$blue10" />
     </YStack>
   );
 }

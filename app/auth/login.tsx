@@ -5,7 +5,7 @@ import { SafeAreaView, Alert } from 'react-native';
 import { Text, YStack, Button, Input, H2, Card ,Image} from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/hooks/useAuth';
-import icon from '../../assets/images/icon.png';
+const iconImage = require('../../assets/images/icon.png');
 
 export default function LoginScreen() {
   const [rut, setRut] = useState('');
@@ -76,7 +76,7 @@ export default function LoginScreen() {
             elevation={5}
           >
             <Image
-              source ={icon}
+              source ={iconImage}
                style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
           </Card>

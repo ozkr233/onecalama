@@ -13,13 +13,14 @@ export interface Evidence {
 
 // ACTUALIZADO: DenunciaFormData con evidencias locales
 export interface DenunciaFormData {
+  [x: string]: any;
   titulo: string;
   descripcion: string;
   categoria: string;  // ID como string para el formulario
   departamento: string; // ID como string para el formulario
-  direccion: string; // ACTUALIZADO: campo unificado para dirección
-  ubicacion?: LocationData; // NUEVO: datos del mapa
-  evidencias: Evidence[]; // NUEVO: evidencias locales
+  direccion: string; //  campo unificado para dirección
+  ubicacion?: LocationData; //  datos del mapa
+  evidencias: Evidence[]; //  evidencias locales
 }
 
 // NUEVO: Tipo para datos de ubicación del mapa
@@ -47,7 +48,7 @@ export interface DepartamentoMunicipal {
 
 export interface Categoria {
   id: number;
-  departamento: DepartamentoMunicipal; // Como en serializers.py - objeto completo
+  departamento: DepartamentoMunicipal; // Como en serializers.py
   nombre: string;
   descripcion?: string;
 }
@@ -70,7 +71,7 @@ export interface SituacionPublicacion {
   descripcion?: string;
 }
 
-// Basado en tu modelo Usuario
+// modelo Usuario
 export interface Usuario {
   id: number;
   rut: string; // USERNAME_FIELD
@@ -82,7 +83,7 @@ export interface Usuario {
   esta_activo: boolean;
 }
 
-// Exactamente como en tu modelo Publicacion
+// 
 export interface Publicacion {
   id: number;
   codigo: string; // Auto-generado P-YYYY-MM-XXXXXXXX

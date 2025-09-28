@@ -2,9 +2,10 @@
 // URLs base según ambiente - CORREGIDAS
 export const API_CONFIG = {
   development: {
-    baseURL: 'http://192.168.8.103:8000/api/v1',  // ← AGREGADO /v1
+    baseURL: 'http://192.168.1.176:8000/api/v1',  // ← AGREGADO /v1
     timeout: 10000,
     retries: 2
+    // else http://192.168.1.176:8000/api/v1 , http://192.168.8.103:8000/api/v1
   },
   staging: {
     baseURL: 'https://staging-api.onecalama.cl/api/v1',  // ← AGREGADO /v1

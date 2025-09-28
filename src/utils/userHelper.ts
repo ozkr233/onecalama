@@ -1,103 +1,77 @@
-// src/utils/userHelper.ts - Helper simple para obtener usuario
+// src/utils/userHelper.ts - CORREGIDO para usar la info disponible
 import { apiService } from '../services/api';
 import AuthHelper from './authHelper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export class UserHelper {
 
   /**
-   * Obtener el ID del usuario actual de manera simple
+   * Obtener el ID del usuario actual - CORREGIDO
    */
   static async getCurrentUserId(): Promise<number> {
-    try {
-      console.log('🔍 Obteniendo ID del usuario actual...');
-
-      // Estrategia 1: Intentar obtener del endpoint de perfil
-      try {
-        console.log('📡 Intentando /usuarios/me/ o similar...');
-
-        // Probar diferentes endpoints comunes para perfil
-        const endpoints = ['/usuarios/me/', '/auth/profile/', '/profile/', '/users/me/'];
-
-        for (const endpoint of endpoints) {
-          try {
-            const perfil = await apiService.get<any>(endpoint, true);
-            if (perfil && perfil.id) {
-              console.log(`✅ Usuario ID obtenido de ${endpoint}:`, perfil.id);
-              return perfil.id;
-            }
-          } catch (endpointError) {
-            console.log(`⚠️ Endpoint ${endpoint} no disponible`);
-          }
-        }
-      } catch (error) {
-        console.log('⚠️ No hay endpoint de perfil disponible');
+  console.log('🔍 [NUEVO] Obteniendo ID del usuario actual...');
+  
+  try {
+    // PRIMERO: AsyncStorage userInfo (donde está el perfil completo)
+    const userInfoStr = await AsyncStorage.getItem('userInfo');
+    if (userInfoStr) {
+      const userInfo = JSON.parse(userInfoStr);
+      if (userInfo?.id) {
+        console.log('✅ [NUEVO] ID desde userInfo:', userInfo.id);
+        return userInfo.id;
       }
-
-      // Estrategia 2: Buscar en lista de usuarios por RUT
-      try {
-        console.log('📡 Buscando usuario por RUT...');
-        const userInfo = await AuthHelper.getUserInfoFromToken();
-
-        if (userInfo && userInfo.rut) {
-          console.log('🔍 RUT del token:', userInfo.rut);
-
-          const usuarios = await apiService.get<any>('/usuarios/', true);
-          const usuariosList = usuarios.results || usuarios;
-
-          const usuario = usuariosList.find((u: any) => u.rut === userInfo.rut);
-
-          if (usuario && usuario.id) {
-            console.log('✅ Usuario encontrado por RUT:', {
-              id: usuario.id,
-              rut: usuario.rut,
-              nombre: usuario.nombre
-            });
-            return usuario.id;
-          }
-        }
-      } catch (error) {
-        console.log('⚠️ No se pudo buscar por RUT:', error.message);
-      }
-
-      // Estrategia 3: Usar ID hardcodeado basado en el RUT conocido
-      console.log('🔄 Usando estrategia de fallback...');
-      const userInfo = await AuthHelper.getUserInfoFromToken();
-
-      if (userInfo && userInfo.rut === '20123930-5') {
-        // Usar un ID específico para este RUT de prueba
-        console.log('✅ Usando ID específico para RUT de prueba');
-        return 1; // O el ID que corresponda a este usuario en tu base de datos
-      }
-
-      // Estrategia 4: ID por defecto
-      console.warn('⚠️ Usando ID de usuario por defecto');
-      return 1;
-
-    } catch (error) {
-      console.error('❌ Error obteniendo ID de usuario:', error);
-      return 1; // Fallback final
     }
+  } catch (error) {
+    console.log('⚠️ [NUEVO] Error leyendo userInfo');
+  }
+  
+  try {
+    // SEGUNDO: AsyncStorage userId directo
+    const userIdStr = await AsyncStorage.getItem('userId');
+    if (userIdStr) {
+      const userId = parseInt(userIdStr);
+      if (!isNaN(userId)) {
+        console.log('✅ [NUEVO] ID desde userId:', userId);
+        return userId;
+      }
+    }
+  } catch (error) {
+    console.log('⚠️ [NUEVO] Error leyendo userId');
   }
 
+  // Si llega aquí, HAY UN PROBLEMA
+  console.error('❌ [NUEVO] NO SE PUDO OBTENER ID DEL USUARIO');
+  throw new Error('No se pudo obtener el ID del usuario. Verifica tu sesión.');
+}
   /**
    * Verificar qué usuarios existen en el sistema
    */
   static async debugUsuarios(): Promise<void> {
     try {
-      console.log('🔍 Debug: listando usuarios disponibles...');
+      console.log('🔍 === DEBUG USUARIO ACTUAL ===');
 
-      const usuarios = await apiService.get<any>('/usuarios/', true);
-      const usuariosList = usuarios.results || usuarios;
+      // Debug AsyncStorage
+      const userInfoStr = await AsyncStorage.getItem('userInfo');
+      const userIdStr = await AsyncStorage.getItem('userId');
+      const authToken = await AsyncStorage.getItem('authToken');
 
-      console.log('👥 Usuarios en el sistema:', usuariosList.map((u: any) => ({
-        id: u.id,
-        rut: u.rut,
-        nombre: u.nombre,
-        email: u.email
-      })));
+      console.log('📦 AsyncStorage:', {
+        userInfo: userInfoStr ? JSON.parse(userInfoStr) : null,
+        userId: userIdStr,
+        hasToken: !!authToken
+      });
 
-      const userInfo = await AuthHelper.getUserInfoFromToken();
-      console.log('🔑 Usuario del token:', userInfo);
+      // Debug token JWT
+      const tokenInfo = await AuthHelper.getUserInfoFromToken();
+      console.log('🔑 Token JWT:', tokenInfo);
+
+      // Debug perfil desde API
+      try {
+        const perfil = await apiService.getProfile();
+        console.log('👤 Perfil API:', perfil);
+      } catch (error) {
+        console.log('❌ Error obteniendo perfil API:', error);
+      }
 
     } catch (error) {
       console.error('❌ Error en debug de usuarios:', error);

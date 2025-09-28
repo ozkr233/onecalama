@@ -1,10 +1,11 @@
 // src/components/forms/LoginForm.tsx
 import React, { useState } from 'react';
 import { Alert } from 'react-native';
-import { Text, YStack, XStack, Button, Input, Card } from 'tamagui';
+import { Text, YStack, XStack, Button, Input, Card, Spinner } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
+
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -112,6 +113,9 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     router.push('/auth/register');
   };
 
+  // Verificar si el formulario es válido para habilitar el botón
+  const isFormValid = rut.trim() && password.trim() && Object.keys(errors).length === 0;
+
   return (
     <Card
       p="$4"
@@ -182,14 +186,14 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           )}
         </YStack>
 
-        {/* Botón de Login */}
+        {/* Botón de Login con Loading integrado */}
         <Button
           size="$5"
           backgroundColor="$primary"
           color="white"
           fontWeight="bold"
           onPress={handleLogin}
-          disabled={isLoading}
+          disabled={isLoading || !isFormValid}
           pressStyle={{ backgroundColor: "$primaryDark", scale: 0.98 }}
           shadowColor="$primary"
           shadowOffset={{ width: 0, height: 4 }}
@@ -197,10 +201,11 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           shadowRadius={8}
           elevation={8}
           marginTop="$2"
+          opacity={isLoading || !isFormValid ? 0.6 : 1}
         >
           {isLoading ? (
             <XStack alignItems="center" gap="$2">
-              <Ionicons name="refresh" size={20} color="white" />
+              <Spinner size="small" color="white" />
               <Text color="white" fontWeight="bold">Iniciando sesión...</Text>
             </XStack>
           ) : (

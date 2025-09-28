@@ -5,7 +5,7 @@ import { StatusBar, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
-import { UserDisplay, UserAvatar } from '../ui/UserDisplay';
+import { UserAvatar } from '../ui/UserDisplay';
 
 interface AppHeaderProps {
   screenTitle: string;
@@ -32,6 +32,7 @@ export default function AppHeader({
 }: AppHeaderProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const firstName = user?.nombre ? user.nombre.trim().split(/\s+/)[0] : user?.nombre || '';
 
   const handleBackPress = () => {
     if (onBackPress) {
@@ -140,14 +141,14 @@ export default function AppHeader({
                   >
                     OneCalama
                   </Text>
-                  {user && (
+                  {firstName ? (
                     <Text
                       color="rgba(255,255,255,0.9)"
                       fontSize="$4"
                     >
-                      Hola, <UserDisplay variant="first-name" color="rgba(255,255,255,0.9) "  />
+                      Hola, {firstName}
                     </Text>
-                  )}
+                  ) : null}
                 </YStack>
               </XStack>
             ) : (

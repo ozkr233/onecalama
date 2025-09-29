@@ -24,7 +24,7 @@ export const ResumenEstadistico: React.FC<ResumenEstadisticoProps> = ({ estadist
         {/* Header */}
         <XStack alignItems="center" gap="$2">
           <Ionicons name="stats-chart" size={20} color="#E67E22" />
-          <H4 color="$textPrimary">📊 Resumen de mis denuncias</H4>
+          <H4 color="$textPrimary"> Resumen de mis denuncias</H4>
         </XStack>
 
         {/* Grid de estadísticas principales */}

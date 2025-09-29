@@ -94,11 +94,12 @@ class RespuestasMunicipalesService {
     try {
       console.log('🔄 [RESPUESTAS] Obteniendo respuestas para publicación:', publicacionId);
       
-      // Filtrar por publicación usando query params
-      const url = `${ENDPOINTS.RESPUESTAS_MUNICIPALES}?publicacion=${publicacionId}`;
-      const response = await apiService.get<{ results: RespuestaMunicipalAPI[] }>(url, true);
+      const url = ENDPOINTS.RESPUESTAS_MUNICIPALES_POR_PUBLICACION(publicacionId);
+      const response = await apiService.get<RespuestaMunicipalAPI[] | { results: RespuestaMunicipalAPI[] }>(url, true);
 
-      const respuestas = response.results || response as any || [];
+      const respuestas = Array.isArray(response)
+        ? response
+        : response?.results || [];
       console.log('✅ [RESPUESTAS] Respuestas encontradas:', respuestas.length);
 
       return respuestas.map(this.formatearRespuesta);
@@ -218,3 +219,4 @@ class RespuestasMunicipalesService {
 }
 
 export const respuestasMunicipalesService = new RespuestasMunicipalesService();
+

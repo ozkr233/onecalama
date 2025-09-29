@@ -59,11 +59,16 @@ const ApiTestComponent: React.FC = () => {
         console.log('🔑 Token agregado a headers');
       }
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), ACTIVE_CONFIG.timeout);
+
       const response = await fetch(url, {
         method: 'GET',
         headers,
-        timeout: ACTIVE_CONFIG.timeout,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       const duration = Date.now() - startTime;
 

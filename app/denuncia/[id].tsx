@@ -1,16 +1,54 @@
 // app/denuncia/[id].tsx - VERSIÓN CON DEBUG DE EVIDENCIAS
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { SafeAreaView, Alert } from 'react-native';
 import { Text, YStack, XStack, Card, H4, H5, Button, Tabs } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AppHeader from '../../src/components/layout/AppHeader';
 import { EvidenciaViewerModal } from '../../src/components/historial/EvidenciaViewerModal';
-import { HistorialDenuncia, Evidencia } from '../../src/types/historial';
+import { HistorialDenuncia, Evidencia, Respuesta } from '../../src/types/historial';
 import LoadingSpinner from '../../src/components/ui/Loading';
 import { DenunciaDetailsTab } from '../../src/components/denuncia/DenunciaDetailsTab';
 import { DenunciaResponsesTab } from '../../src/components/denuncia/DenunciaResponsesTab';
 import { historialService } from '../../src/services/historial';
+import { useRespuestasMunicipales } from '../../src/hooks/useRespuestasMunicipales';
+import { RespuestaMunicipalFormateada } from '../../src/services/respuestasMunicipales';
+
+const EXTENSIONES_IMAGEN = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic']);
+const EXTENSIONES_VIDEO = new Set(['mp4', 'mov', 'avi', 'mkv', 'webm']);
+const EXTENSIONES_DOCUMENTO = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']);
+
+const obtenerTipoEvidenciaDesdeExtension = (extension?: string): Evidencia['tipo'] => {
+  const ext = (extension || '').toLowerCase();
+  if (EXTENSIONES_IMAGEN.has(ext)) return 'imagen';
+  if (EXTENSIONES_VIDEO.has(ext)) return 'video';
+  return 'documento';
+};
+
+const determinarTipoRespuestaDesdeSituacion = (situacionNueva?: string): Respuesta['tipo'] => {
+  if (!situacionNueva) return 'respuesta';
+  const situacion = situacionNueva.toLowerCase();
+  if (situacion.includes('resuel') || situacion.includes('cerr')) {
+    return 'resolucion';
+  }
+  if (situacion.includes('proceso') || situacion.includes('curso') || situacion.includes('actualiz')) {
+    return 'actualizacion';
+  }
+  return 'respuesta';
+};
+
+const obtenerNombreEvidencia = (url: string, index: number, extension?: string) => {
+  if (url) {
+    const partes = url.split('/');
+    const ultimo = partes[partes.length - 1];
+    if (ultimo) {
+      return ultimo;
+    }
+  }
+  const sufijo = extension ? '.' + extension : '';
+  return `evidencia_${index + 1}${sufijo}`;
+};
+
 
 export default function DenunciaDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,6 +64,35 @@ export default function DenunciaDetailScreen() {
   // Estados para evidencias
   const [evidenciaVisible, setEvidenciaVisible] = useState(false);
   const [evidenciaSeleccionada, setEvidenciaSeleccionada] = useState<Evidencia | null>(null);
+  const publicacionId = useMemo(() => {
+    if (!id) return null;
+    const parsedId = Number(id);
+    return Number.isNaN(parsedId) ? null : parsedId;
+  }, [id]);
+
+  const {
+    respuestas: respuestasMunicipales,
+    loading: respuestasLoading,
+    error: respuestasError,
+    refreshing: respuestasRefreshing,
+    cargarRespuestas: cargarRespuestasMunicipales,
+    refresh: refreshRespuestas,
+  } = useRespuestasMunicipales({
+    publicacionId: publicacionId ?? undefined,
+    autoLoad: false,
+  });
+
+  const [respuestasVista, setRespuestasVista] = useState<Respuesta[]>([]);
+
+  useEffect(() => {
+    setRespuestasVista([]);
+  }, [publicacionId]);
+
+  useEffect(() => {
+    if (tabActiva === 'respuestas' && publicacionId !== null) {
+      cargarRespuestasMunicipales();
+    }
+  }, [tabActiva, publicacionId, cargarRespuestasMunicipales]);
 
   useEffect(() => {
     if (id) {
@@ -81,8 +148,16 @@ export default function DenunciaDetailScreen() {
   const handleRefresh = async () => {
     setRefreshing(true);
     await cargarDetalleDenuncia();
+    if (tabActiva === 'respuestas' && publicacionId !== null) {
+      await refreshRespuestas();
+    }
     setRefreshing(false);
   };
+  const handleRefreshRespuestas = useCallback(async () => {
+    if (publicacionId === null) return;
+    await refreshRespuestas();
+  }, [publicacionId, refreshRespuestas]);
+
 
   // Función para manejar la calificación de la denuncia
   const handleSatisfactionRating = async (rating: number) => {
@@ -121,27 +196,92 @@ export default function DenunciaDetailScreen() {
   };
 
   // Función para construir URL completa de Cloudinary
-  const construirUrlCompleta = (rutaRelativa: string): string => {
+  const construirUrlCompleta = useCallback((rutaRelativa: string): string => {
     if (!rutaRelativa) return '';
     if (rutaRelativa.startsWith('http')) return rutaRelativa;
-    
-    // URL base de Cloudinary según tu configuración
-    return `https://res.cloudinary.com/de06451wd/${rutaRelativa}`;
-  };
 
-  // Manejar marcar respuesta como leída
+    return `https://res.cloudinary.com/de06451wd/${rutaRelativa}`;
+  }, []);
+
+  const transformarRespuestasMunicipales = useCallback((items: RespuestaMunicipalFormateada[]): Respuesta[] => {
+    return items.map((item) => {
+      const partesMensaje: string[] = [];
+      if (item.descripcion) partesMensaje.push(item.descripcion.trim());
+      if (item.acciones) partesMensaje.push(`Acciones realizadas: ${item.acciones}`.trim());
+      if (item.situacionAnterior || item.situacionNueva) {
+        partesMensaje.push(`Situacion: ${item.situacionAnterior || 'Sin informacion'} -> ${item.situacionNueva || 'Sin informacion'}`);
+      }
+
+      const mensaje = partesMensaje.filter(Boolean).join('\n\n') || 'Sin informacion disponible';
+
+      const evidencias = (item.evidencias || []).map((evidencia, evidenciaIndex) => {
+        const extension = (evidencia.tipo || '').toLowerCase();
+        return {
+          id: evidencia.id?.toString() ?? `${item.id}-${evidenciaIndex}`,
+          tipo: obtenerTipoEvidenciaDesdeExtension(extension),
+          url: construirUrlCompleta(evidencia.url),
+          nombre: obtenerNombreEvidencia(evidencia.url, evidenciaIndex, extension),
+          fechaSubida: evidencia.fecha,
+        } as Evidencia;
+      });
+
+      return {
+        id: item.id.toString(),
+        autor: item.funcionarioNombre || 'Municipalidad',
+        mensaje,
+        fechaRespuesta: item.fechaRespuesta,
+        tipo: determinarTipoRespuestaDesdeSituacion(item.situacionNueva),
+        esOficial: true,
+        leida: false,
+        evidencias,
+      };
+    });
+  }, [construirUrlCompleta]);
+
+  useEffect(() => {
+    setRespuestasVista((prev) => {
+      const mapeadas = transformarRespuestasMunicipales(respuestasMunicipales);
+      return mapeadas.map((respuesta) => {
+        const anterior = prev.find((prevRespuesta) => prevRespuesta.id === respuesta.id);
+        return anterior ? { ...respuesta, leida: anterior.leida } : respuesta;
+      });
+    });
+  }, [respuestasMunicipales, transformarRespuestasMunicipales]);
+
+  const denunciaRender = useMemo(() => {
+    if (!denuncia) return null;
+    return { ...denuncia, respuestas: respuestasVista };
+  }, [denuncia, respuestasVista]);
+
+  // Manejar marcar respuesta como leida
   const handleMarcarRespuestaLeida = async (respuestaId: string) => {
     try {
-      setDenuncia(prev => {
-        if (!prev) return null;
-        const respuestasActualizadas = prev.respuestas?.map(resp =>
-          resp.id === respuestaId ? { ...resp, leida: true } : resp
-        ) || [];
-        return { ...prev, respuestas: respuestasActualizadas };
+      let respuestasActualizadas: Respuesta[] = [];
+
+      setRespuestasVista((prev) => {
+        const actualizadas = prev.map((respuesta) =>
+          respuesta.id === respuestaId ? { ...respuesta, leida: true } : respuesta
+        );
+        respuestasActualizadas = actualizadas;
+        return actualizadas;
       });
+
+      setDenuncia((prev) => {
+        if (!prev) return null;
+
+        const respuestasPrevias = (prev.respuestas || []).map((respuesta) =>
+          respuesta.id === respuestaId ? { ...respuesta, leida: true } : respuesta
+        );
+
+        return {
+          ...prev,
+          respuestas: respuestasActualizadas.length ? respuestasActualizadas : respuestasPrevias,
+        };
+      });
+
       await historialService.marcarRespuestaLeida(respuestaId);
     } catch (error) {
-      console.error('Error marcando respuesta como leída:', error);
+      console.error('Error marcando respuesta como leida:', error);
     }
   };
 
@@ -222,11 +362,17 @@ export default function DenunciaDetailScreen() {
     );
   }
 
+  if (!denunciaRender) {
+    return null;
+  }
+
+  const denunciaActual = denunciaRender;
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
       <AppHeader
         screenTitle="Detalle de Denuncia"
-        screenSubtitle={denuncia.codigo}
+        screenSubtitle={denunciaActual.codigo}
         screenIcon="document-text"
         showBackButton={true}
         onBackPress={() => router.back()}
@@ -293,9 +439,9 @@ export default function DenunciaDetailScreen() {
                 fontWeight={tabActiva === 'respuestas' ? '600' : '400'}
               >
                 Respuestas
-                {denuncia.respuestas && denuncia.respuestas.length > 0 && (
+                {respuestasVista.length > 0 && (
                   <Text fontSize="$2" color="$blue10">
-                    {' '}({denuncia.respuestas.length})
+                    {' '}({respuestasVista.length})
                   </Text>
                 )}
               </Text>
@@ -306,7 +452,7 @@ export default function DenunciaDetailScreen() {
         {/* Contenido de pestañas */}
         <Tabs.Content value="detalles" flex={1}>
           <DenunciaDetailsTab
-            denuncia={denuncia}
+            denuncia={denunciaActual}
             refreshing={refreshing}
             onRefresh={handleRefresh}
             onRate={handleSatisfactionRating}
@@ -319,9 +465,11 @@ export default function DenunciaDetailScreen() {
 
         <Tabs.Content value="respuestas" flex={1}>
           <DenunciaResponsesTab
-            respuestas={denuncia.respuestas}
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
+            respuestas={respuestasVista}
+            loading={respuestasLoading && respuestasVista.length === 0}
+            refreshing={respuestasRefreshing}
+            error={respuestasError}
+            onRefresh={handleRefreshRespuestas}
             onMarcarRespuestaLeida={handleMarcarRespuestaLeida}
             onVerEvidencia={handleVerEvidencia}
           />

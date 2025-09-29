@@ -5,9 +5,12 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Evidencia, Respuesta } from '../../types/historial';
 import { RespuestaItem } from '../historial/RespuestaItem';
+import LoadingSpinner from '../ui/Loading';
 
 type Props = {
   respuestas?: Respuesta[] | null;
+  loading?: boolean;
+  error?: string | null;
   refreshing: boolean;
   onRefresh: () => Promise<void> | void;
   onMarcarRespuestaLeida: (respuestaId: string) => void;
@@ -16,12 +19,16 @@ type Props = {
 
 export function DenunciaResponsesTab({
   respuestas,
+  loading = false,
+  error,
   refreshing,
   onRefresh,
   onMarcarRespuestaLeida,
   onVerEvidencia,
 }: Props) {
-  const hasResponses = respuestas && respuestas.length > 0;
+  const totalRespuestas = respuestas?.length ?? 0;
+  const hasResponses = totalRespuestas > 0;
+
 
   return (
     <ScrollView
@@ -36,7 +43,28 @@ export function DenunciaResponsesTab({
       }
     >
       <YStack padding="$4">
-        {!hasResponses ? (
+        {loading ? (
+          <YStack alignItems="center" gap="$3" padding="$6">
+            <LoadingSpinner size="large" />
+            <Text fontSize="$3" color="$gray11">
+              Cargando respuestas...
+            </Text>
+          </YStack>
+        ) : error ? (
+          <YStack alignItems="center" gap="$3" padding="$6">
+            <Ionicons name="warning" size={48} color="#f59e0b" />
+            <Text fontSize="$4" color="$gray11" textAlign="center">
+              No pudimos cargar las respuestas
+            </Text>
+            <Text fontSize="$3" color="$gray9" textAlign="center">
+              {error}
+            </Text>
+            <Button size="$3" variant="outlined" onPress={onRefresh}>
+              <Ionicons name="refresh" size={16} />
+              <Text marginLeft="$2">Reintentar</Text>
+            </Button>
+          </YStack>
+        ) : !hasResponses ? (
           <YStack alignItems="center" gap="$4" padding="$6">
             <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
             <Text fontSize="$4" color="$gray11" textAlign="center">
@@ -50,14 +78,14 @@ export function DenunciaResponsesTab({
           <YStack gap="$3">
             <XStack justifyContent="space-between" alignItems="center">
               <H5 color="$textPrimary">
-                Respuestas ({respuestas?.length ?? 0})
+                Respuestas ({totalRespuestas})
               </H5>
               <Button size="$3" variant="outlined" onPress={onRefresh}>
                 <Ionicons name="refresh" size={16} />
               </Button>
             </XStack>
 
-            {respuestas?.map((respuesta, index) => (
+            {(respuestas || []).map((respuesta, index) => (
               <RespuestaItem
                 key={respuesta.id || index}
                 respuesta={respuesta}
@@ -71,3 +99,4 @@ export function DenunciaResponsesTab({
     </ScrollView>
   );
 }
+

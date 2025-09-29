@@ -236,7 +236,7 @@ class DenunciasService {
         numero_calle: Number(formData.direccion ?? 0),
         latitud,
         longitud,
-        junta_vecinal: Number(formData.junta_vecinal ?? 1), // por defecto
+        auto_detectar_junta: true,
         usuario: usuarioId
       };
 

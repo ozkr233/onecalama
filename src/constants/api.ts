@@ -62,6 +62,7 @@ export const ENDPOINTS = {
   RESPUESTAS_MUNICIPALES: '/respuestas-municipales/', // ✅ v1/respuestas-municipales/
   RESPUESTAS_MUNICIPALES_POR_PUBLICACION: (id: number | string) => `/respuestas-municipales/por-publicacion/${id}/`,
   RESPUESTA_DETALLE: (id: number) => `/respuestas-municipales/${id}/`,
+  RESPUESTAS_PUBLICACION: "respuestas-municipales/por-publicacion/{publicacion_id}/",
 
   // Estadísticas - BASADO EN TUS URLS
   ESTADISTICAS: {

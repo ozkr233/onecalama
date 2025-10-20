@@ -85,42 +85,7 @@ export default function HistorialScreen() {
     setEvidenciaVisible(true);
   };
 
-  // Componente de indicador de conexión
-  const ConnectionIndicator = () => (
-    <XStack 
-      justifyContent="space-between" 
-      alignItems="center" 
-      paddingHorizontal="$4"
-      paddingVertical="$2"
-      backgroundColor={isBackendConnected ? "$green2" : "$red2"}
-      borderRadius="$3"
-      marginHorizontal="$4"
-      marginBottom="$3"
-    >
-      <XStack alignItems="center" gap="$2">
-        <Ionicons 
-          name={isBackendConnected ? "cloud-done" : "cloud-offline"} 
-          size={16} 
-          color={isBackendConnected ? "#22c55e" : "#ef4444"} 
-        />
-        <Text fontSize="$2" color={isBackendConnected ? "$green11" : "$red11"}>
-          {isBackendConnected ? 'Conectado al servidor' : 'Sin conexión al servidor'}
-        </Text>
-      </XStack>
-      
-      {!isBackendConnected && (
-        <Button 
-          size="$2" 
-          variant="outlined" 
-          borderColor="$red7" 
-          color="$red11"
-          onPress={recargarCompleto}
-        >
-          <Text fontSize="$1" color="$red11">Reintentar</Text>
-        </Button>
-      )}
-    </XStack>
-  );
+
 
   // Validar datos antes de renderizar
   const denunciasValidas = denuncias?.filter(d => d && d.id) || [];
@@ -252,7 +217,6 @@ export default function HistorialScreen() {
       />
 
       {/* Indicador de conexión */}
-      <ConnectionIndicator />
 
       {loading && !isRefreshing ? (
         <LoadingState />

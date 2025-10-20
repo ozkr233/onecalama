@@ -2,18 +2,18 @@
 // URLs base según ambiente - CORREGIDAS
 export const API_CONFIG = {
   development: {
-    baseURL: 'http://192.168.8.103:8000/api/v1',  // ← AGREGADO /v1
+    baseURL: 'https://clubdelamusica-pruebas.com/api/v1',  // ← AGREGADO /v1
     timeout: 10000,
     retries: 2
-    // else http://192.168.1.176:8000/api/v1 , http://192.168.8.103:8000/api/v1
+    // else http://192.168.1.176:8000/api/v1 , http://192.168.8.103:8000/api/v1, http://
   },
   staging: {
-    baseURL: 'https://staging-api.onecalama.cl/api/v1',  // ← AGREGADO /v1
+    baseURL: 'https://staging-api.onecalama.cl/api/v1',  // 
     timeout: 8000,
     retries: 3
   },
   production: {
-    baseURL: 'https://api.onecalama.cl/api/v1',  // ← AGREGADO /v1
+    baseURL: 'https://api.onecalama.cl/api/v1',  // 
     timeout: 8000,
     retries: 2
   }
@@ -62,7 +62,7 @@ export const ENDPOINTS = {
   RESPUESTAS_MUNICIPALES: '/respuestas-municipales/', // ✅ v1/respuestas-municipales/
   RESPUESTAS_MUNICIPALES_POR_PUBLICACION: (id: number | string) => `/respuestas-municipales/por-publicacion/${id}/`,
   RESPUESTA_DETALLE: (id: number) => `/respuestas-municipales/${id}/`,
-  RESPUESTAS_PUBLICACION: "respuestas-municipales/por-publicacion/{publicacion_id}/",
+
 
   // Estadísticas - BASADO EN TUS URLS
   ESTADISTICAS: {

@@ -77,6 +77,7 @@ export default function DenunciaDetailScreen() {
     refreshing: respuestasRefreshing,
     cargarRespuestas: cargarRespuestasMunicipales,
     refresh: refreshRespuestas,
+    calificarRespuesta: calificarRespuestaMunicipal,
   } = useRespuestasMunicipales({
     publicacionId: publicacionId ?? undefined,
     autoLoad: false,
@@ -472,6 +473,8 @@ export default function DenunciaDetailScreen() {
             onRefresh={handleRefreshRespuestas}
             onMarcarRespuestaLeida={handleMarcarRespuestaLeida}
             onVerEvidencia={handleVerEvidencia}
+            respuestasMunicipales={respuestasMunicipales}
+            onCalificarMunicipal={calificarRespuestaMunicipal}
           />
         </Tabs.Content>
       </Tabs>

@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Evidencia, Respuesta } from '../../types/historial';
 import { RespuestaItem } from '../historial/RespuestaItem';
+import { RespuestaMunicipalFormateada } from '../../services/respuestasMunicipales';
+import { RespuestaMunicipalCard } from '../respuestas/RespuestaMunicipalCard';
 import LoadingSpinner from '../ui/Loading';
 
 type Props = {
@@ -15,6 +17,8 @@ type Props = {
   onRefresh: () => Promise<void> | void;
   onMarcarRespuestaLeida: (respuestaId: string) => void;
   onVerEvidencia: (evidencia: Evidencia) => void;
+  respuestasMunicipales?: RespuestaMunicipalFormateada[];
+  onCalificarMunicipal?: (respuestaId: number, puntuacion: 1 | 2 | 3 | 4 | 5) => Promise<void>;
 };
 
 export function DenunciaResponsesTab({
@@ -25,6 +29,8 @@ export function DenunciaResponsesTab({
   onRefresh,
   onMarcarRespuestaLeida,
   onVerEvidencia,
+  respuestasMunicipales,
+  onCalificarMunicipal,
 }: Props) {
   const totalRespuestas = respuestas?.length ?? 0;
   const hasResponses = totalRespuestas > 0;
@@ -84,6 +90,19 @@ export function DenunciaResponsesTab({
                 <Ionicons name="refresh" size={16} />
               </Button>
             </XStack>
+
+            {Array.isArray(respuestasMunicipales) && respuestasMunicipales.length > 0 && (
+              <YStack gap="$2">
+                {respuestasMunicipales.map((rm) => (
+                  <RespuestaMunicipalCard
+                    key={rm.id}
+                    respuesta={rm}
+                    onCalificar={onCalificarMunicipal}
+                    mostrarPublicacion={false}
+                  />
+                ))}
+              </YStack>
+            )}
 
             {(respuestas || []).map((respuesta, index) => (
               <RespuestaItem

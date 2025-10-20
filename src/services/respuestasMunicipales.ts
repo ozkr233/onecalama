@@ -199,7 +199,7 @@ class RespuestasMunicipalesService {
       console.log('🔄 [RESPUESTAS] Obteniendo estadísticas...');
       
       // Usar endpoint de estadísticas si existe
-      const response = await apiService.get('/estadisticas-respuestas/', true);
+      const response : any = await apiService.get('/estadisticas-respuestas/', true);
       
       return {
         totalRespuestas: response.total_respuestas_puntuadas || 0,

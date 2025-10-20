@@ -39,54 +39,6 @@ export default function AnunciosScreen() {
     }
   };
 
-  // Componente de estado de conexión
-  const ConnectionStatus = () => (
-    <Card
-      bg={isConnected ? "$green2" : "$orange2"}
-      p="$3"
-      br="$3"
-      mb="$3"
-      borderWidth={1}
-      borderColor={isConnected ? "$green7" : "$orange7"}
-    >
-      <XStack ai="center" jc="space-between">
-        <XStack ai="center" gap="$2">
-          <Ionicons
-            name={isConnected ? 'checkmark-circle' : 'warning'}
-            size={20}
-            color={isConnected ? '#22C55E' : '#F59E0B'}
-          />
-          <YStack>
-            <Text fontSize="$3" fontWeight="bold" color="$textPrimary">
-              {connectionStatus === 'online' ? 'Conectado' : 
-               connectionStatus === 'offline' ? 'Sin conexión' : 'Verificando...'}
-            </Text>
-            <Text fontSize="$2" color="$textSecondary">
-              {isConnected 
-                ? 'Datos actualizados desde el servidor'
-                : 'Usando datos locales de respaldo'
-              }
-            </Text>
-          </YStack>
-        </XStack>
-
-        <Button
-          size="$2"
-          variant="outlined"
-          borderColor={isConnected ? "$green7" : "$orange7"}
-          color={isConnected ? "$green9" : "$orange9"}
-          onPress={handleTestConnection}
-          disabled={testingConnection || connectionStatus === 'testing'}
-        >
-          {testingConnection ? (
-            <Spinner size="small" />
-          ) : (
-            <Ionicons name="refresh" size={14} />
-          )}
-        </Button>
-      </XStack>
-    </Card>
-  );
 
   // Componente de estadísticas mejorado
   const StatisticsRow = () => {
@@ -295,11 +247,7 @@ export default function AnunciosScreen() {
           }
         >
           <YStack f={1} p="$4" gap="$4">
-            {/* Estado de conexión */}
-            <ConnectionStatus />
-
-            {/* Estadísticas */}
-            <StatisticsRow />
+            
 
             {/* Header de contenido */}
             <XStack ai="center" jc="space-between">

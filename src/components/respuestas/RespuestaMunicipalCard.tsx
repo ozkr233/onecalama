@@ -5,6 +5,7 @@ import { Card, XStack, YStack, Text, H5, Button } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { RespuestaMunicipalFormateada } from '../../services/respuestasMunicipales';
 import { formatearFecha } from '../../utils/formatters';
+import { EmojiRating } from '../ui/EmojiRating';
 
 interface Props {
   respuesta: RespuestaMunicipalFormateada;
@@ -35,6 +36,12 @@ export const RespuestaMunicipalCard: React.FC<Props> = ({
       Alert.alert('Error', 'No se pudo enviar la calificación. Intenta nuevamente.');
     } finally {
       setCalificando(false);
+    }
+  };
+
+  const handleEmojiChange = (v: 1 | 2 | 3 | 4 | 5) => {
+    if (!respuesta.puntuacion) {
+      handleCalificar(v);
     }
   };
 
@@ -205,16 +212,15 @@ export const RespuestaMunicipalCard: React.FC<Props> = ({
           </Text>
           
           <XStack space="$1" alignItems="center">
-            {renderEstrellas()}
-            {respuesta.puntuacion && (
-              <Text fontSize="$2" color="$color11" marginLeft="$2">
-                ({respuesta.puntuacion}/5)
-              </Text>
-            )}
+            <EmojiRating
+              value={respuesta.puntuacion ?? null}
+              onChange={handleEmojiChange}
+              disabled={calificando || !!respuesta.puntuacion}
+              size={22}
+              showLabel={!!respuesta.puntuacion}
+            />
             {calificando && (
-              <Text fontSize="$2" color="$color11" marginLeft="$2">
-                Calificando...
-              </Text>
+              <Text fontSize="$2" color="$color11">Enviando…</Text>
             )}
           </XStack>
           

@@ -24,7 +24,7 @@ class HistorialService {
   }
 
   /**
-   * ✅ CORREGIDO: Obtener historial usando el parámetro ?usuario_id=${userId}
+   * ✅  Obtener historial usando el parámetro ?usuario_id=${userId}
    */
   async obtenerHistorial(filtros?: FiltrosHistorial): Promise<HistorialDenuncia[]> {
     try {
@@ -34,7 +34,7 @@ class HistorialService {
       const usuarioId = await this.obtenerUsuarioId();
       console.log('👤 [HISTORIAL] Usuario ID obtenido:', usuarioId);
       
-      // 2. Construir URL con parámetro usuario_id (CORREGIDO)
+      // 2. Construir URL con parámetro usuario_id (y otros filtros si existen)
       const params = new URLSearchParams();
       params.append('usuario_id', usuarioId.toString()); // ✅ CAMBIO: usuario_id en lugar de usuario
       

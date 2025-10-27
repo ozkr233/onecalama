@@ -90,8 +90,6 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
     }
 
     try {
-      console.log('🔐 Intentando login con RUT:', rut);
-      
       const result = await login(rut.trim(), password);
 
       if (result.success) {

@@ -40,31 +40,31 @@ export const ENDPOINTS = {
 
   
 
-  // Datos maestros - NOMBRES EXACTOS DE TU BACKEND
+  // Datos maestros - NOMBRES EXACTOS DE  BACKEND
   CATEGORIAS: '/categorias/',                        // ✅ v1/categorias/
   DEPARTAMENTOS: '/departamentos-municipales/',      // ✅ v1/departamentos-municipales/
   JUNTAS_VECINALES: '/juntas-vecinales/',           // ✅ v1/juntas-vecinales/
   SITUACIONES: '/situaciones-publicaciones/',       // ✅ v1/situaciones-publicaciones/
 
-  // Publicaciones (denuncias) - BASADO EN TU VIEWSET
+  // Publicaciones (denuncias) - BASADO EN  VIEWSET
   PUBLICACIONES: '/publicaciones/',                  // ✅ v1/publicaciones/
   PUBLICACION_DETALLE: (id: number) => `/publicaciones/${id}/`,
 
-  // Evidencias - EXACTO DE TU BACKEND
+  // Evidencias 
   EVIDENCIAS: '/evidencias/',                        // ✅ v1/evidencias/
   SUBIR_EVIDENCIA: '/evidencias/',                   // POST a evidencias/
 
-  // Anuncios - EXACTO DE TU BACKEND
+  // Anuncios - 
   ANUNCIOS: '/anuncios-municipales/',                // ✅ v1/anuncios-municipales/
   ANUNCIO_DETALLE: (id: number) => `/anuncios-municipales/${id}/`,
 
-  // ✅ NUEVO: Respuestas municipales - EXACTO DE TU BACKEND
+  // Respuestas municipales -
   RESPUESTAS_MUNICIPALES: '/respuestas-municipales/', // ✅ v1/respuestas-municipales/
   RESPUESTAS_MUNICIPALES_POR_PUBLICACION: (id: number | string) => `/respuestas-municipales/por-publicacion/${id}/`,
   RESPUESTA_DETALLE: (id: number) => `/respuestas-municipales/${id}/`,
 
 
-  // Estadísticas - BASADO EN TUS URLS
+  // Estadísticas - 
   ESTADISTICAS: {
     RESUMEN: '/resumen-estadisticas/',               // ✅ v1/resumen-estadisticas/
     POR_CATEGORIA: '/publicaciones-por-categoria/',  // ✅ v1/publicaciones-por-categoria/
@@ -72,7 +72,6 @@ export const ENDPOINTS = {
     RESUELTOS: '/resueltos-por-mes/',               // ✅ v1/resueltos-por-mes/
     TASA_RESOLUCION: '/tasa-resolucion-departamento/', // ✅ v1/tasa-resolucion-departamento/
     POR_JUNTA: '/publicaciones-por-junta-vecinal/', // ✅ v1/publicaciones-por-junta-vecinal/
-    // ✅ NUEVO: Estadísticas de respuestas
     RESPUESTAS: '/estadisticas-respuestas/',         // ✅ v1/estadisticas-respuestas/
   },
 

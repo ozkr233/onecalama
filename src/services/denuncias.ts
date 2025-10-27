@@ -7,7 +7,8 @@ import {
   JuntaVecinal
 } from '../types/denuncias';
 import { apiService } from './api';
-import { evidenciasService } from './evidencias';
+import { evidenciasService as evidenciasLegacy } from './evidencias';
+import { evidenciasDirectService } from './evidenciasDirect';
 import AuthHelper from '../utils/authHelper';
 import UserHelper from '../utils/userHelper';
 
@@ -282,7 +283,7 @@ class DenunciasService {
       if (formData.evidencias && formData.evidencias.length > 0) {
         console.log(`📎 Paso 2: Subiendo ${formData.evidencias.length} evidencias…`);
         try {
-          const validation = evidenciasService.validateEvidencias(formData.evidencias);
+          const validation = evidenciasLegacy.validateEvidencias(formData.evidencias);
           if (!validation.isValid) {
             console.warn('⚠️ Validación de evidencias falló:', validation.errors);
             return {
@@ -292,7 +293,7 @@ class DenunciasService {
             };
           }
 
-          const evidResp = await evidenciasService.subirEvidencias(
+          const evidResp = await evidenciasDirectService.subirEvidencias(
             Number(nuevaPublicacion.id),
             formData.evidencias
           );

@@ -105,6 +105,8 @@ export const useAuth = () => {
       if (error.status === 401) {
         // Token inválido, limpiar todo
         await clearAuthData();
+        // Redirigir al login si la sesión expiró
+        try { router.replace('/auth/login'); } catch {}
       } else {
         // Otro error, mantener autenticado pero sin datos completos
         setAuthState(prev => ({ ...prev, isLoading: false }));

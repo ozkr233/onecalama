@@ -1,6 +1,7 @@
 // app/(tabs)/historial.tsx - ACTUALIZADO CON MANEJO DE EVIDENCIAS
 import React, { useState } from 'react';
 import { SafeAreaView, FlatList, RefreshControl } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, YStack, XStack, H4, H5, Button } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -14,6 +15,7 @@ import { HistorialDenuncia, Evidencia } from '../../src/types/historial';
 
 export default function HistorialScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   // Estados para el modal de evidencias
   const [evidenciaVisible, setEvidenciaVisible] = useState(false);
@@ -233,7 +235,7 @@ export default function HistorialScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: 16,
-            paddingBottom: 20,
+            paddingBottom: 20 + insets.bottom,
           }}
           refreshControl={
             <RefreshControl

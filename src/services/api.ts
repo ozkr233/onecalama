@@ -1,5 +1,6 @@
 // src/services/api.ts - SERVICIO API MEJORADO Y ACTUALIZADO
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 import { ACTIVE_CONFIG, ENDPOINTS } from '../constants/api';
 
 interface RequestOptions extends RequestInit {
@@ -20,7 +21,8 @@ const TIMEOUTS = {
   CREATE: 15000,
   UPDATE: 12000,
   DELETE: 8000,
-  UPLOAD: 30000,
+  // Uploads can be slower on emulator; give more time
+  UPLOAD: 120000,
   AUTH: 10000,
 };
 
@@ -39,6 +41,7 @@ const ERROR_MESSAGES = {
 class ApiService {
   private cache = new Map<string, CacheItem<any>>();
   private defaultTimeout = ACTIVE_CONFIG.timeout;
+  private isHandlingUnauthorized = false;
 
   constructor() {
     console.log(`🔧 ApiService inicializado con base URL: ${ACTIVE_CONFIG.baseURL}`);
@@ -177,6 +180,8 @@ class ApiService {
         case 401:
           errorMessage = ERROR_MESSAGES.UNAUTHORIZED;
           await this.clearAuthData();
+          // Redirigir a login si el token expiró
+          this.handleUnauthorizedRedirect();
           break;
         case 403:
           errorMessage = ERROR_MESSAGES.FORBIDDEN;
@@ -311,6 +316,26 @@ class ApiService {
     });
 
     return await this.handleResponse<T>(response);
+  }
+
+  // Redirección segura a login en caso de 401
+  private handleUnauthorizedRedirect() {
+    try {
+      if (this.isHandlingUnauthorized) return;
+      this.isHandlingUnauthorized = true;
+
+      // Reemplaza la ruta actual para evitar back a pantallas protegidas
+      router.replace('/auth/login');
+
+      // Evitar bloquear futuros manejos; desarmar el flag tras un breve lapso
+      setTimeout(() => {
+        this.isHandlingUnauthorized = false;
+      }, 1000);
+    } catch (e) {
+      // En caso de que router no esté disponible todavía
+      this.isHandlingUnauthorized = false;
+      console.warn('No se pudo redirigir automáticamente al login:', e);
+    }
   }
 
   async patch<T>(endpoint: string, data: any, useAuth: boolean = true): Promise<T> {

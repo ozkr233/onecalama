@@ -193,12 +193,16 @@ export default function DenunciaDetailScreen() {
   };
 
   // Función para construir URL completa de Cloudinary
-  const construirUrlCompleta = useCallback((rutaRelativa: string): string => {
-    if (!rutaRelativa) return '';
-    if (rutaRelativa.startsWith('http')) return rutaRelativa;
-
-    return `https://res.cloudinary.com/de06451wd/${rutaRelativa}`;
-  }, []);
+  const construirUrlCompleta = useCallback((entrada: string): string => {
+  if (!entrada) return '';
+  // extraer http(s) en cualquier parte y forzar https
+  const match = entrada.match(/https?:\/\/[^\s]+/);
+  if (match) {
+    return match[0].replace(/^http:\/\//, 'https://');
+  }
+  const path = entrada.replace(/^\/+/, '');
+  return `https://res.cloudinary.com/de06451wd/${path}`;
+}, []);
 
   const transformarRespuestasMunicipales = useCallback((items: RespuestaMunicipalFormateada[]): Respuesta[] => {
     return items.map((item) => {
@@ -452,4 +456,5 @@ export default function DenunciaDetailScreen() {
     </SafeAreaView>
   );
 }
+
 

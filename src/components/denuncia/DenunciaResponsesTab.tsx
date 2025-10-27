@@ -68,10 +68,10 @@ export function DenunciaResponsesTab({
           <YStack alignItems="center" gap="$4" padding="$6">
             <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
             <Text fontSize="$4" color="$gray11" textAlign="center">
-              Sin respuestas aún
+              No hay respuestas para esta publicación
             </Text>
             <Text fontSize="$3" color="$gray9" textAlign="center">
-              Aún no se han emitido respuestas para esta denuncia
+              Te avisaremos cuando exista una respuesta oficial.
             </Text>
           </YStack>
         ) : (

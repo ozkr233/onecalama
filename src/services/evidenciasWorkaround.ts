@@ -3,6 +3,7 @@ import { ACTIVE_CONFIG } from '../constants/api';
 import { Evidence } from '../types/denuncias';
 import AuthHelper from '../utils/authHelper';
 import * as FileSystem from 'expo-file-system';
+import { FileSystemUploadType } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 class EvidenciasWorkaround {
@@ -38,14 +39,16 @@ class EvidenciasWorkaround {
             // No agregues Content-Type aquí; uploadAsync lo maneja con boundary
             Accept: 'application/json',
           },
-          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          uploadType: FileSystemUploadType.MULTIPART,
           fieldName: 'archivo', // nombre de campo que tu DRF espera
           parameters: {
+            // Enviar ambos nombres por compatibilidad con el serializer
+            publicacion: String(publicacionId),
             publicacion_id: String(publicacionId),
             extension: this.getFileExtension(fileName),
             fecha: new Date().toISOString(),
           },
-          mimeType: mime,
+          // mimeType solo aplica a BINARY_CONTENT; se omite en MULTIPART
           // Nota: RN/Expo infiere el nombre; si tu backend exige filename exacto,
           // puedes pasar "name" pero no está tipado en TS de Expo:
           // @ts-ignore
@@ -90,6 +93,8 @@ class EvidenciasWorkaround {
         name: fileName,
         type: mime,
       } as any);
+      // Enviar ambos nombres por compatibilidad con el serializer
+      formData.append('publicacion', String(publicacionId));
       formData.append('publicacion_id', String(publicacionId));
       formData.append('extension', this.getFileExtension(fileName));
       formData.append('fecha', new Date().toISOString());
@@ -135,15 +140,16 @@ class EvidenciasWorkaround {
   }
 
   /**
-   * MÉTODO PRINCIPAL: Intenta directa, si falla usa workaround
+   * MÉTODO PRINCIPAL: Intenta directa; evita fallback con anuncios (403 para usuarios)
    */
   async subirEvidencia(publicacionId: number, evidencia: Evidence): Promise<any> {
     try {
       console.log(`🚀 Intentando subida directa primero...`);
       return await this.subirEvidenciaDirecta(publicacionId, evidencia);
     } catch (error: any) {
-      console.warn(`⚠️ Subida directa falló, usando workaround:`, error?.message ?? String(error));
-      return await this.subirEvidenciaWorkaround(publicacionId, evidencia);
+      console.error(`❌ Subida directa falló:`, error?.message ?? String(error));
+      // Propagar error sin intentar workaround de anuncios (requiere permisos especiales 403)
+      throw error;
     }
   }
 

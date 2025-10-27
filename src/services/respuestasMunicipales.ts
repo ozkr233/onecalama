@@ -140,6 +140,11 @@ class RespuestasMunicipalesService {
       return completadas;
     } catch (error) {
       console.error('❌ [RESPUESTAS] Error obteniendo respuestas por publicación:', error);
+      // Tratar 404 como "sin respuestas" en lugar de error visible
+      if ((error as any)?.status === 404 || String((error as any)?.message || '').includes('404')) {
+        console.log('ℹ️ [RESPUESTAS] No hay respuestas para esta publicación (404). Devolviendo lista vacía.');
+        return [];
+      }
       throw new Error('Error al cargar las respuestas de esta publicación');
     }
   }

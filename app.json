@@ -34,6 +34,7 @@
         "backgroundColor": "#E67E22"
       },
       "package": "com.municipalidadcalama.onecalama",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -41,6 +42,9 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
         "android.permission.INTERNET",
         "android.permission.RECORD_AUDIO"
       ],
@@ -58,6 +62,22 @@
     "plugins": [
       "expo-router",
       "expo-notifications",
+      [
+        "expo-navigation-bar",
+        {
+          "backgroundColor": "#FAFAFA",
+          "barStyle": "dark-content",
+          "behavior": "inset-swipe"
+        }
+      ],
+      [
+        "expo-navigation-bar",
+        {
+          "behavior": "inset-swipe",
+          "barStyle": "dark-content",
+          "backgroundColor": "#FAFAFA"
+        }
+      ],
       [
         "expo-location",
         {
@@ -87,6 +107,10 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "notification": {
+      "icon": "./assets/images/icon.png",
+      "color": "#E67E22"
     },
     "extra": {
       "router": {

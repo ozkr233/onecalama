@@ -6,6 +6,7 @@ import { Text, YStack, Spinner } from 'tamagui';
 import { SafeAreaView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import config from '../src/tamagui.config';
+import { NotificationsProvider } from '../src/providers/NotificationsProvider';
 
 // Evitar que la splash screen se oculte automáticamente
 SplashScreen.preventAutoHideAsync();
@@ -81,6 +82,7 @@ export default function RootLayout() {
 
   return (
     <TamaguiProvider config={config} defaultTheme="calama">
+      <NotificationsProvider autoRegister={initialRoute === '/(tabs)'}>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -131,6 +133,7 @@ export default function RootLayout() {
           }} 
         />
       </Stack>
+      </NotificationsProvider>
     </TamaguiProvider>
   );
 }

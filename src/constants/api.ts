@@ -85,6 +85,12 @@ export const ENDPOINTS = {
   // Utilidades (puedes agregar si las tienes)
   HEALTH: '/health/',                                // Si tienes health check
   VERSION: '/version/',                              // Si tienes endpoint de versión
+
+  // Notificaciones push (a implementar en backend)
+  NOTIFICACIONES: {
+    REGISTRAR: '/notificaciones/registrar/',
+    DESACTIVAR: '/notificaciones/desactivar/',
+  },
 } as const;
 
 // Headers comunes - ACTUALIZADOS PARA DJANGO

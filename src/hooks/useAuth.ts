@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../services/api';
+import { disableNotificationsOnServer } from '../services/notifications';
 
 interface User {
   id: number;
@@ -202,6 +203,7 @@ export const useAuth = () => {
 
   const logout = async () => {
     try {
+      try { await disableNotificationsOnServer(); } catch {}
       await apiService.logout();
     } catch (error) {
       console.warn('⚠️ Error en logout del servidor:', error);

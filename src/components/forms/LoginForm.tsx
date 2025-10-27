@@ -5,6 +5,7 @@ import { Text, YStack, XStack, Button, Input, Card, Spinner } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
+import { usePushNotifications } from '../../hooks/usePushNotifications';
 
 
 interface LoginFormProps {
@@ -22,6 +23,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   const [errors, setErrors] = useState<FormErrors>({});
   
   const { login, isLoading } = useAuth();
+  const { ensureRegistered } = usePushNotifications();
 
   // Formatear RUT mientras se escribe
   const formatRUT = (text: string) => {

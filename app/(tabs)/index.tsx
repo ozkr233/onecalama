@@ -9,6 +9,7 @@ import { WelcomeSection } from '../../src/components/ui/WelcomeSection';
 import AnuncioCard from '../../src/components/ui/AnuncioCard';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useAnuncios } from '../../src/hooks/useAnuncios';
+import PushTest from '../../src/components/debug/PushTest';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -134,6 +135,9 @@ export default function HomeScreen() {
               </XStack>
             </YStack>
           </Card>
+
+          {/* Debug: Prueba de notificaciones (eliminar en prod) */}
+          <PushTest />
 
           {/* Estadísticas Rápidas */}
           <Card

@@ -33,7 +33,7 @@ interface UseHistorialReturn {
   cargarEstadisticas: () => Promise<void>;
   aplicarFiltros: (filtros: FiltrosHistorial) => void;
   limpiarFiltros: () => void;
-  // marcarRespuestaComoLeida eliminado (no soportado por backend)
+  marcarRespuestaComoLeida: (respuestaId: string) => Promise<void>;
   calificarSatisfaccion: (denunciaId: string, calificacion: 1 | 2 | 3 | 4 | 5, comentario?: string) => Promise<void>;
   obtenerDenunciaPorId: (id: string) => Promise<HistorialDenuncia | null>;
   refresh: () => Promise<void>;
@@ -139,7 +139,33 @@ export function useHistorial(): UseHistorialReturn {
     setFiltros({});
   }, []);
 
-  // Eliminado: lógica para marcar como leída
+  // Marcar respuesta como leída
+  const marcarRespuestaComoLeida = useCallback(async (respuestaId: string) => {
+    try {
+      console.log('📖 [HOOK] Marcando respuesta como leída:', respuestaId);
+      
+      await historialService.marcarRespuestaLeida(respuestaId);
+      
+      // Actualizar estado local
+      setDenuncias(prev => prev.map(denuncia => ({
+        ...denuncia,
+        respuestas: denuncia.respuestas.map(respuesta =>
+          respuesta.id === respuestaId
+            ? { ...respuesta, leida: true }
+            : respuesta
+        )
+      })));
+
+      // Actualizar contador de notificaciones
+      setNotificacionesNoLeidas(prev => Math.max(0, prev - 1));
+      
+      console.log('✅ [HOOK] Respuesta marcada como leída');
+      
+    } catch (err: any) {
+      console.error('❌ [HOOK] Error marcando respuesta:', err.message);
+      // No lanzar error - operación no crítica
+    }
+  }, []);
 
   // Calificar satisfacción
   const calificarSatisfaccion = useCallback(async (
@@ -286,6 +312,7 @@ export function useHistorial(): UseHistorialReturn {
     cargarEstadisticas,
     aplicarFiltros,
     limpiarFiltros,
+    marcarRespuestaComoLeida,
     calificarSatisfaccion,
     obtenerDenunciaPorId,
     refresh,

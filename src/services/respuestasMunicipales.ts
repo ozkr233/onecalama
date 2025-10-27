@@ -102,7 +102,42 @@ class RespuestasMunicipalesService {
         : response?.results || [];
       console.log('✅ [RESPUESTAS] Respuestas encontradas:', respuestas.length);
 
-      return respuestas.map(this.formatearRespuesta);
+      const formateadas = respuestas.map(this.formatearRespuesta);
+
+      // Fallback: si alguna respuesta no trae evidencias, intentar cargarlas por endpoint dedicado
+      const completadas = await Promise.all(
+        formateadas.map(async (item) => {
+          if (item.evidencias && item.evidencias.length > 0) return item;
+          try {
+            // Endpoint real: router.register('evidencia-respuesta', ...)
+            let res: any = await apiService.get(`/evidencia-respuesta/?respuesta=${item.id}`, true);
+            let evs = (res?.results ?? res ?? []) as any[];
+
+            // Si no hay resultados, intentar con "respuesta_id" como alternativa de filtro
+            if (!Array.isArray(evs) ? !(evs?.length > 0) : evs.length === 0) {
+              try {
+                res = await apiService.get(`/evidencia-respuesta/?respuesta_id=${item.id}`, true);
+                evs = (res?.results ?? res ?? []) as any[];
+              } catch {}
+            }
+
+            const evidenciasMap = (Array.isArray(evs) ? evs : []).map((ev: any) => ({
+              id: ev.id,
+              url: ev.archivo,
+              fecha: ev.fecha,
+              tipo: ev.extension,
+            }));
+
+            console.log('📎 [RESPUESTAS] Evidencias para respuesta', item.id, ':', evidenciasMap.length);
+            return { ...item, evidencias: evidenciasMap } as RespuestaMunicipalFormateada;
+          } catch (e) {
+            console.warn('⚠️ [RESPUESTAS] No se pudieron cargar evidencias de respuesta', item.id, e);
+            return item;
+          }
+        })
+      );
+
+      return completadas;
     } catch (error) {
       console.error('❌ [RESPUESTAS] Error obteniendo respuestas por publicación:', error);
       throw new Error('Error al cargar las respuestas de esta publicación');
@@ -144,11 +179,8 @@ class RespuestasMunicipalesService {
     try {
       console.log('🔄 [RESPUESTAS] Calificando respuesta:', respuestaId, 'Puntuación:', puntuacion);
       
-      await apiService.patch(
-        `${ENDPOINTS.RESPUESTAS_MUNICIPALES}${respuestaId}/`,
-        { puntuacion },
-        true
-      );
+      const url = `${ENDPOINTS.RESPUESTA_DETALLE(respuestaId)}puntuar/`;
+      await apiService.patch(url, { puntuacion }, true);
 
       console.log('✅ [RESPUESTAS] Respuesta calificada exitosamente');
     } catch (error) {
@@ -178,9 +210,9 @@ class RespuestasMunicipalesService {
       situacionAnterior: respuesta.situacion_inicial,
       situacionNueva: respuesta.situacion_posterior,
       puntuacion: respuesta.puntuacion,
-      evidencias: (respuesta.evidencias || []).map(evidencia => ({
+      evidencias: (respuesta.evidencias || []).map((evidencia: any) => ({
         id: evidencia.id,
-        url: evidencia.archivo,
+        url: (evidencia.archivo || evidencia.url),
         fecha: evidencia.fecha,
         tipo: evidencia.extension,
       })),

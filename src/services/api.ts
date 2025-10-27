@@ -37,9 +37,6 @@ const ERROR_MESSAGES = {
 };
 
 class ApiService {
-  patch(arg0: string, arg1: {}, arg2: boolean) {
-    throw new Error('Method not implemented.');
-  }
   private cache = new Map<string, CacheItem<any>>();
   private defaultTimeout = ACTIVE_CONFIG.timeout;
 
@@ -308,6 +305,19 @@ class ApiService {
     
     const response = await this.requestWithTimeout(url, {
       method: 'PUT',
+      body: JSON.stringify(data),
+      useAuth,
+      timeout: TIMEOUTS.UPDATE,
+    });
+
+    return await this.handleResponse<T>(response);
+  }
+
+  async patch<T>(endpoint: string, data: any, useAuth: boolean = true): Promise<T> {
+    const url = `${ACTIVE_CONFIG.baseURL}${endpoint}`;
+
+    const response = await this.requestWithTimeout(url, {
+      method: 'PATCH',
       body: JSON.stringify(data),
       useAuth,
       timeout: TIMEOUTS.UPDATE,

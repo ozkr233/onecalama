@@ -155,24 +155,7 @@ class HistorialService {
     }
   }
 
-  /**
-   * Marcar respuesta como leída
-   */
-  async marcarRespuestaLeida(respuestaId: string): Promise<void> {
-    try {
-      console.log('📖 [HISTORIAL] Marcando respuesta como leída:', respuestaId);
-      
-      try {
-        await apiService.patch(`/respuestas/${respuestaId}/leida/`, {}, true);
-        console.log('✅ [HISTORIAL] Respuesta marcada en backend');
-      } catch (error) {
-        console.log('⚠️ [HISTORIAL] Backend no soporta marcar respuestas');
-      }
-      
-    } catch (error: any) {
-      console.error('❌ [HISTORIAL] Error marcando respuesta:', error.message);
-    }
-  }
+  // Eliminado: marcarRespuestaLeida (backend no soporta)
 
   /**
    * Calificar satisfacción

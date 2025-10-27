@@ -14,7 +14,6 @@ type Props = {
   onRefresh: () => Promise<void> | void;
   onRate: (rating: number) => void;
   onVerEvidencia: (evidencia: Evidencia) => void;
-  onMarcarRespuestaLeida: (respuestaId: string) => void;
   onDebugEvidencias: () => void;
   buildEvidenceUrl: (rutaRelativa: string) => string;
 };
@@ -25,7 +24,6 @@ export function DenunciaDetailsTab({
   onRefresh,
   onRate,
   onVerEvidencia,
-  onMarcarRespuestaLeida,
   onDebugEvidencias,
   buildEvidenceUrl,
 }: Props) {
@@ -240,7 +238,6 @@ export function DenunciaDetailsTab({
                   <RespuestaItem
                     key={respuesta.id || index}
                     respuesta={respuesta}
-                    onMarcarComoLeida={onMarcarRespuestaLeida}
                     onVerEvidencia={onVerEvidencia}
                   />
                 ))}

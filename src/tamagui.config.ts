@@ -92,6 +92,8 @@ const fonts = {
 
 const appConfig = createTamagui({
   ...config,
+  // Use default animations from the preset (includes: quick, medium, slow, bouncy, etc.)
+  animations: (config as any).animations,
   tokens: {
     ...config.tokens,
     ...customTokens,

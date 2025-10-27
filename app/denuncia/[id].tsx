@@ -130,11 +130,7 @@ export default function DenunciaDetailScreen() {
           });
         });
         
-        // Marcar respuestas como leídas si existen
-        const respuestasNoLeidas = denunciaData.respuestas?.filter(r => !r.leida) || [];
-        if (respuestasNoLeidas.length > 0) {
-          await historialService.marcarRespuestaLeida(respuestasNoLeidas[0].id);
-        }
+        // Eliminado: marcado de respuestas como leídas (backend no soporta)
       } else {
         setError('Denuncia no encontrada');
       }
@@ -235,6 +231,7 @@ export default function DenunciaDetailScreen() {
         esOficial: true,
         leida: false,
         evidencias,
+        puntuacion: item.puntuacion ?? null,
       };
     });
   }, [construirUrlCompleta]);
@@ -254,37 +251,7 @@ export default function DenunciaDetailScreen() {
     return { ...denuncia, respuestas: respuestasVista };
   }, [denuncia, respuestasVista]);
 
-  // Manejar marcar respuesta como leida
-  const handleMarcarRespuestaLeida = async (respuestaId: string) => {
-    try {
-      let respuestasActualizadas: Respuesta[] = [];
-
-      setRespuestasVista((prev) => {
-        const actualizadas = prev.map((respuesta) =>
-          respuesta.id === respuestaId ? { ...respuesta, leida: true } : respuesta
-        );
-        respuestasActualizadas = actualizadas;
-        return actualizadas;
-      });
-
-      setDenuncia((prev) => {
-        if (!prev) return null;
-
-        const respuestasPrevias = (prev.respuestas || []).map((respuesta) =>
-          respuesta.id === respuestaId ? { ...respuesta, leida: true } : respuesta
-        );
-
-        return {
-          ...prev,
-          respuestas: respuestasActualizadas.length ? respuestasActualizadas : respuestasPrevias,
-        };
-      });
-
-      await historialService.marcarRespuestaLeida(respuestaId);
-    } catch (error) {
-      console.error('Error marcando respuesta como leida:', error);
-    }
-  };
+  // Eliminado: función para marcar respuesta como leída
 
   // Función para debugging de evidencias
   const debugEvidencias = () => {
@@ -458,7 +425,6 @@ export default function DenunciaDetailScreen() {
             onRefresh={handleRefresh}
             onRate={handleSatisfactionRating}
             onVerEvidencia={handleVerEvidencia}
-            onMarcarRespuestaLeida={handleMarcarRespuestaLeida}
             onDebugEvidencias={debugEvidencias}
             buildEvidenceUrl={construirUrlCompleta}
           />
@@ -471,10 +437,8 @@ export default function DenunciaDetailScreen() {
             refreshing={respuestasRefreshing}
             error={respuestasError}
             onRefresh={handleRefreshRespuestas}
-            onMarcarRespuestaLeida={handleMarcarRespuestaLeida}
             onVerEvidencia={handleVerEvidencia}
-            respuestasMunicipales={respuestasMunicipales}
-            onCalificarMunicipal={calificarRespuestaMunicipal}
+            onCalificarMunicipal={(rid, p) => calificarRespuestaMunicipal(Number(rid), p)}
           />
         </Tabs.Content>
       </Tabs>

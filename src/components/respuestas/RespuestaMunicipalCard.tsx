@@ -1,6 +1,6 @@
 // src/components/respuestas/RespuestaMunicipalCard.tsx
 import React, { useState } from 'react';
-import { Alert, Pressable } from 'react-native';
+import { Alert } from 'react-native';
 import { Card, XStack, YStack, Text, H5, Button } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { RespuestaMunicipalFormateada } from '../../services/respuestasMunicipales';
@@ -45,26 +45,7 @@ export const RespuestaMunicipalCard: React.FC<Props> = ({
     }
   };
 
-  const renderEstrellas = () => {
-    const estrellas = [];
-    for (let i = 1; i <= 5; i++) {
-      const estaLlena = respuesta.puntuacion && i <= respuesta.puntuacion;
-      estrellas.push(
-        <Pressable
-          key={i}
-          onPress={() => !respuesta.puntuacion && handleCalificar(i as 1 | 2 | 3 | 4 | 5)}
-          disabled={calificando || !!respuesta.puntuacion}
-        >
-          <Ionicons
-            name={estaLlena ? 'star' : 'star-outline'}
-            size={20}
-            color={estaLlena ? '#FFD700' : '#ccc'}
-          />
-        </Pressable>
-      );
-    }
-    return estrellas;
-  };
+  
 
   const getColorSituacion = (situacion: string) => {
     const situacionLower = situacion.toLowerCase();

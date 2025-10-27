@@ -9,6 +9,7 @@ import { EmojiRating } from '../ui/EmojiRating';
 
 interface RespuestaItemProps {
   respuesta: Respuesta;
+  onMarcarComoLeida?: (respuestaId: string) => void;
   onVerEvidencia?: (evidencia: Evidencia) => void;
   onCalificarMunicipal?: (respuestaId: string, puntuacion: 1 | 2 | 3 | 4 | 5) => Promise<void> | void;
 }
@@ -17,11 +18,18 @@ const { width } = Dimensions.get('window');
 
 export const RespuestaItem: React.FC<RespuestaItemProps> = ({
   respuesta,
+  onMarcarComoLeida,
   onVerEvidencia,
   onCalificarMunicipal
 }) => {
   const [mostrarEvidencias, setMostrarEvidencias] = useState(false);
   const [calificando, setCalificando] = useState(false);
+
+  const handleMarcarLeida = () => {
+    if (onMarcarComoLeida && !respuesta.leida) {
+      onMarcarComoLeida(respuesta.id);
+    }
+  };
 
   const handleCalificar = async (puntuacion: 1 | 2 | 3 | 4 | 5) => {
     if (!onCalificarMunicipal || respuesta.puntuacion) return;
@@ -114,6 +122,9 @@ export const RespuestaItem: React.FC<RespuestaItemProps> = ({
             <Text fontSize="$2" color="$textSecondary">
               {formatearFecha(respuesta.fechaRespuesta)}
             </Text>
+            {!respuesta.leida && (
+              <Card bg="$red10" w={8} h={8} br="$10" />
+            )}
           </YStack>
         </XStack>
 
@@ -241,7 +252,19 @@ export const RespuestaItem: React.FC<RespuestaItemProps> = ({
           </YStack>
         )}
 
-        {/* Acción de leído eliminada por falta de soporte en backend */}
+        {/* Acción para marcar como leída */}
+        {!respuesta.leida && (
+          <XStack justifyContent="flex-end">
+            <Button
+              size="$2"
+              variant="outlined"
+              onPress={handleMarcarLeida}
+            >
+              <Ionicons name="checkmark" size={16} />
+              <Text ml="$1">Marcar como leída</Text>
+            </Button>
+          </XStack>
+        )}
       </YStack>
     </Card>
   );
@@ -249,3 +272,4 @@ export const RespuestaItem: React.FC<RespuestaItemProps> = ({
 
 // Exportación por defecto también por compatibilidad
 export default RespuestaItem;
+

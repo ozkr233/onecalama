@@ -86,7 +86,7 @@ export const ResumenEstadistico: React.FC<ResumenEstadisticoProps> = ({ estadist
                 </Text>
               </XStack>
               <Text fontSize="$3" color="#4B5563" fontWeight="600" textAlign="center">
-                No resuelto
+                en progreso
               </Text>
             </YStack>
           </Card>

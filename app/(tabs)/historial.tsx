@@ -70,14 +70,14 @@ export default function HistorialScreen() {
 
   // Manejar click en evidencia desde la tarjeta del historial
   const handleEvidenciaPress = (evidencia: Evidencia) => {
-    console.log('👁️ [HISTORIAL] Abriendo evidencia desde historial:', {
+    console.log('[HISTORIAL] Abriendo evidencia desde historial:', {
       id: evidencia.id,
       nombre: evidencia.nombre,
       tipo: evidencia.tipo,
       url: evidencia.url
     });
     
-    // Crear una evidencia con URL completa para el modal
+    // Crear una evidencia con URL completa
     const evidenciaConUrlCompleta = {
       ...evidencia,
       url: construirUrlCompleta(evidencia.url)

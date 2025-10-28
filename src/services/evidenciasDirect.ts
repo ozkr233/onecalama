@@ -11,6 +11,27 @@ function getFileExtension(fileName: string): string {
   return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : 'jpg';
 }
 
+function guessMime(fileName: string): string {
+  const ext = getFileExtension(fileName);
+  switch (ext) {
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'webp':
+      return 'image/webp';
+    case 'heic':
+      return 'image/heic';
+    case 'mp4':
+      return 'video/mp4';
+    case 'mov':
+      return 'video/quicktime';
+    default:
+      return 'application/octet-stream';
+  }
+}
+
 
 async function ensureFileUri(inputUri: string, fileName: string): Promise<string> {
   if (!inputUri) throw new Error('URI de archivo inválida');

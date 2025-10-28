@@ -40,7 +40,7 @@ export default function AnunciosScreen() {
   };
 
 
-  // Componente de estadísticas mejorado
+  // Componente de estadísticas
   const StatisticsRow = () => {
     if (!statistics) return null;
 
@@ -124,7 +124,7 @@ export default function AnunciosScreen() {
     </Card>
   );
 
-  // Componente de error mejorado
+  // Componente de error 
   const ErrorState = () => (
     <Card
       bg="white"

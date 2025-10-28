@@ -90,14 +90,18 @@ export const useAnuncios = (): UseAnunciosReturn => {
 
   // Test de conexión simple - SIN usar métodos problemáticos del servicio
   const testConnection = useCallback(async (): Promise<boolean> => {
+    setConnectionStatus('testing');
+    console.log('🧪 Probando conexión con anuncios (método directo)...');
+
+    // Test directo al endpoint sin usar el servicio
+    const token = await AuthHelper.getToken();
+    const url = `${ACTIVE_CONFIG.baseURL}${ENDPOINTS.ANUNCIOS}`;
+
+    const controller = new AbortController();
+    const timeoutMs = 5000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
-      setConnectionStatus('testing');
-      console.log('🧪 Probando conexión con anuncios (método directo)...');
-      
-      // Test directo al endpoint sin usar el servicio
-      const token = await AuthHelper.getToken();
-      const url = `${ACTIVE_CONFIG.baseURL}${ENDPOINTS.ANUNCIOS}`;
-      
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -105,11 +109,11 @@ export const useAnuncios = (): UseAnunciosReturn => {
           'Accept': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        timeout: 5000,
+        signal: controller.signal,
       });
-      
+
       const isConnected = response.ok;
-      
+
       if (isConnected) {
         console.log(`✅ Test de conexión exitoso (${response.status})`);
         setIsConnected(true);
@@ -121,17 +125,23 @@ export const useAnuncios = (): UseAnunciosReturn => {
         setConnectionStatus('offline');
         setError(`Error HTTP: ${response.status}`);
       }
-      
+
       return isConnected;
-      
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      console.error('❌ Test de conexión falló:', errorMessage);
-      
+      if ((error as any)?.name === 'AbortError') {
+        console.error('❌ Test de conexión falló: timeout');
+        setError('Test de conexión falló: timeout');
+      } else {
+        console.error('❌ Test de conexión falló:', errorMessage);
+        setError(`Test de conexión falló: ${errorMessage}`);
+      }
+
       setIsConnected(false);
       setConnectionStatus('offline');
-      setError(`Test de conexión falló: ${errorMessage}`);
       return false;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }, []);
 

@@ -2,6 +2,7 @@
 import React from 'react';
 import { Text, YStack, XStack, Button, Card, H4, H5 } from 'tamagui';
 import { SafeAreaView, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import AppHeader from '../../src/components/layout/AppHeader';
@@ -15,7 +16,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
   const { anuncios, loading: anunciosLoading } = useAnuncios();
-  const [isConnected, setIsConnected] = React.useState(true); // Estado de conexión
+  const [isConnected, setIsConnected] = React.useState(true); // Estado de conexion
+  const insets = useSafeAreaInsets();
 
   // Si no está autenticado, mostrar mensaje de carga
   if (!isAuthenticated) {
@@ -45,7 +47,11 @@ export default function HomeScreen() {
         notificationCount={0} // Aquí puedes conectar notificaciones reales
       />
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: (insets?.bottom || 0) + 70 }}
+      >
         <YStack p="$4" gap="$4">
           {/* Sección de bienvenida personalizada */}
           <WelcomeSection />
@@ -352,3 +358,6 @@ export default function HomeScreen() {
     </SafeAreaView>
   );
 }
+
+
+

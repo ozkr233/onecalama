@@ -37,7 +37,7 @@ const customTokens = {
     textSecondary: '#757575',
     textDisabled: '#BDBDBD',
 
-    // Derivados usados por componentes (evita warnings)
+    // Derivados usados por componentes 
     primaryPress: '#D35400', // mismo que primaryDark
     textDisabledPress: '#BDBDBD',
 

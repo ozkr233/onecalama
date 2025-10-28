@@ -109,7 +109,7 @@ export const RespuestaMunicipalCard: React.FC<Props> = ({
           </YStack>
         </XStack>
 
-        {/* Información de la publicación si se debe mostrar */}
+        {/* Información de la publicación */}
         {mostrarPublicacion && (
           <YStack marginTop="$2" padding="$2" backgroundColor="$gray2" borderRadius="$2">
             <Text fontSize="$2" fontWeight="500" color="$color12">

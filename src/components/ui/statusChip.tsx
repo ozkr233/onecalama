@@ -3,7 +3,6 @@ import React from 'react'
 import { XStack, Text, styled } from 'tamagui'
 import { Ionicons } from '@expo/vector-icons'
 
-// Puedes ampliar estos literales según tus estados reales del backend
 type EstadoKey =
   | 'RECIBIDA' | 'RECEIVED'
   | 'EN_PROCESO' | 'IN_PROGRESS'

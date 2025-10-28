@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Evidencia } from '../../types/historial';
 import { formatearFecha } from '../../utils/formatters';
-import * as FileSystem from 'expo-file-system';
+import { downloadAsync, documentDirectory } from 'expo-file-system';
 import * as WebBrowser from 'expo-web-browser';
 
 interface EvidenciaViewerModalProps {
@@ -30,9 +30,9 @@ export const EvidenciaViewerModal: React.FC<EvidenciaViewerModalProps> = ({
     try {
       const fileName = evidencia.nombre || `archivo_${Date.now()}`;
       const sanitized = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const dest = `${FileSystem.documentDirectory}${sanitized}`;
+      const dest = `${documentDirectory}${sanitized}`;
       console.log('Descargando evidencia a:', dest);
-      const download = await FileSystem.downloadAsync(evidencia.url, dest);
+      const download = await downloadAsync(evidencia.url, dest);
       Alert.alert('Descarga completa', `Guardado en: ${download.uri}`);
     } catch (e) {
       console.error('Error descargando evidencia', e);

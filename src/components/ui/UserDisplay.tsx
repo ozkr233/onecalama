@@ -1,4 +1,4 @@
-// src/components/ui/UserDisplay.tsx - Componentes para mostrar información del usuario
+// src/components/ui/UserDisplay.tsx 
 import React from 'react';
 import { Text, YStack, XStack } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
@@ -165,29 +165,6 @@ export function UserInfo({ showEmail = false, showRut = false, showPhone = false
       {showPhone && user.numero_telefonico_movil && (
         <Text fontSize="$3" color="$textSecondary">Tel: {user.numero_telefonico_movil}</Text>
       )}
-    </YStack>
-  );
-}
-
-// Componente de saludo personalizado
-export function UserGreeting() {
-  const { user } = useAuth();
-  
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Buenos días';
-    if (hour < 18) return 'Buenas tardes';
-    return 'Buenas noches';
-  };
-
-  return (
-    <YStack gap="$1">
-      <Text fontSize="$3" color="rgba(255, 255, 255, 0.8)">
-        {getGreeting()}
-      </Text>
-      <Text fontSize="$4" color="white" fontWeight="600">
-        <UserDisplay variant="first-name" color="white" />
-      </Text>
     </YStack>
   );
 }

@@ -44,7 +44,7 @@ export default function HomeScreen() {
         showAppInfo={true}
         showLogout={true}
         showNotifications={true}
-        notificationCount={0} // Aquí puedes conectar notificaciones reales
+        notificationCount={0} // 
       />
 
       <ScrollView

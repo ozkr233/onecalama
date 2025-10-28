@@ -16,7 +16,7 @@ interface AppHeaderProps {
   showAppInfo?: boolean;
   showBackButton?: boolean;
   onBackPress?: () => void;
-  showLogout?: boolean; // Nueva prop para mostrar botón de logout
+  showLogout?: boolean; // prop para botón de logout
 }
 
 export default function AppHeader({
@@ -102,7 +102,7 @@ export default function AppHeader({
               </Button>
             )}
 
-            {/* Información de la app (solo en pantalla principal) */}
+            {/* Información de la app*/}
             {showAppInfo ? (
               <XStack ai="center" gap="$3">
                 {/* Logo de la app */}

@@ -2,7 +2,7 @@
 // URLs base según ambiente - CORREGIDAS
 export const API_CONFIG = {
   development: {
-    baseURL: 'https://clubdelamusica-pruebas.com/api/v1',  // ← AGREGADO /v1
+    baseURL: 'https://clubdelamusica-pruebas.com/api/v1',  //
     timeout: 10000,
     retries: 2
     // else http://192.168.1.176:8000/api/v1 , http://192.168.8.103:8000/api/v1, https://clubdelamusica-pruebas.com/api/v1 http://
@@ -41,44 +41,44 @@ export const ENDPOINTS = {
   
 
   // Datos maestros - NOMBRES EXACTOS DE  BACKEND
-  CATEGORIAS: '/categorias/',                        // ✅ v1/categorias/
-  DEPARTAMENTOS: '/departamentos-municipales/',      // ✅ v1/departamentos-municipales/
-  JUNTAS_VECINALES: '/juntas-vecinales/',           // ✅ v1/juntas-vecinales/
-  SITUACIONES: '/situaciones-publicaciones/',       // ✅ v1/situaciones-publicaciones/
+  CATEGORIAS: '/categorias/',                        //  v1/categorias/
+  DEPARTAMENTOS: '/departamentos-municipales/',      //  v1/departamentos-municipales/
+  JUNTAS_VECINALES: '/juntas-vecinales/',           //  v1/juntas-vecinales/
+  SITUACIONES: '/situaciones-publicaciones/',       //  v1/situaciones-publicaciones/
 
   // Publicaciones (denuncias) - BASADO EN  VIEWSET
-  PUBLICACIONES: '/publicaciones/',                  // ✅ v1/publicaciones/
+  PUBLICACIONES: '/publicaciones/',                  //  v1/publicaciones/
   PUBLICACION_DETALLE: (id: number) => `/publicaciones/${id}/`,
 
   // Evidencias 
-  EVIDENCIAS: '/evidencias/',                        // ✅ v1/evidencias/
+  EVIDENCIAS: '/evidencias/',                        // v1/evidencias/
   SUBIR_EVIDENCIA: '/evidencias/',                   // POST a evidencias/
 
   // Anuncios - 
-  ANUNCIOS: '/anuncios-municipales/',                // ✅ v1/anuncios-municipales/
+  ANUNCIOS: '/anuncios-municipales/',                // v1/anuncios-municipales/
   ANUNCIO_DETALLE: (id: number) => `/anuncios-municipales/${id}/`,
 
   // Respuestas municipales -
-  RESPUESTAS_MUNICIPALES: '/respuestas-municipales/', // ✅ v1/respuestas-municipales/
+  RESPUESTAS_MUNICIPALES: '/respuestas-municipales/', // v1/respuestas-municipales/
   RESPUESTAS_MUNICIPALES_POR_PUBLICACION: (id: number | string) => `/respuestas-municipales/por-publicacion/${id}/`,
   RESPUESTA_DETALLE: (id: number) => `/respuestas-municipales/${id}/`,
 
 
   // Estadísticas - 
   ESTADISTICAS: {
-    RESUMEN: '/resumen-estadisticas/',               // ✅ v1/resumen-estadisticas/
-    POR_CATEGORIA: '/publicaciones-por-categoria/',  // ✅ v1/publicaciones-por-categoria/
-    POR_MES: '/publicaciones-por-mes-y-categoria/',  // ✅ v1/publicaciones-por-mes-y-categoria/
-    RESUELTOS: '/resueltos-por-mes/',               // ✅ v1/resueltos-por-mes/
-    TASA_RESOLUCION: '/tasa-resolucion-departamento/', // ✅ v1/tasa-resolucion-departamento/
-    POR_JUNTA: '/publicaciones-por-junta-vecinal/', // ✅ v1/publicaciones-por-junta-vecinal/
-    RESPUESTAS: '/estadisticas-respuestas/',         // ✅ v1/estadisticas-respuestas/
+    RESUMEN: '/resumen-estadisticas/',               // v1/resumen-estadisticas/
+    POR_CATEGORIA: '/publicaciones-por-categoria/',  // v1/publicaciones-por-categoria/
+    POR_MES: '/publicaciones-por-mes-y-categoria/',  // v1/publicaciones-por-mes-y-categoria/
+    RESUELTOS: '/resueltos-por-mes/',               // v1/resueltos-por-mes/
+    TASA_RESOLUCION: '/tasa-resolucion-departamento/', // v1/tasa-resolucion-departamento/
+    POR_JUNTA: '/publicaciones-por-junta-vecinal/', // v1/publicaciones-por-junta-vecinal/
+    RESPUESTAS: '/estadisticas-respuestas/',         // v1/estadisticas-respuestas/
   },
 
-  // Reportes - EXACTOS DE TU BACKEND
+  // Reportes - EXACTOS DE BACKEND
   REPORTES: {
-    EXCEL: '/export-to-excel/',                      // ✅ v1/export-to-excel/
-    PDF: '/generate-pdf-report/',                    // ✅ v1/generate-pdf-report/
+    EXCEL: '/export-to-excel/',                      // v1/export-to-excel/
+    PDF: '/generate-pdf-report/',                    // v1/generate-pdf-report/
   },
 
   // Utilidades (puedes agregar si las tienes)
@@ -92,7 +92,7 @@ export const ENDPOINTS = {
   },
 } as const;
 
-// Headers comunes - ACTUALIZADOS PARA DJANGO
+// Headers comunes -  DJANGO
 export const COMMON_HEADERS = {
   'Content-Type': 'application/json',
   'Accept': 'application/json',
@@ -112,7 +112,7 @@ export const CACHE_CONFIG = {
   // Datos que cambian seguido - cache corto
   PUBLICACIONES: 5 * 60 * 1000,      // 5 minutos
   ANUNCIOS: 10 * 60 * 1000,          // 10 minutos
-  // ✅ NUEVO: Cache para respuestas municipales
+  // Cache para respuestas municipales
   RESPUESTAS_MUNICIPALES: 5 * 60 * 1000, // 5 minutos
 
   // Estadísticas - cache medio
@@ -134,7 +134,7 @@ export const RETRY_CONFIG = {
   RETRY_ON_STATUS: [408, 429, 500, 502, 503, 504],
 } as const;
 
-// ✅ NUEVO: Tipos para filtros de respuestas municipales
+// Tipos para filtros de respuestas municipales
 export const RESPUESTAS_FILTERS = {
   TODAS: 'todas',
   PUNTUADAS: 'puntuadas', 
@@ -143,7 +143,7 @@ export const RESPUESTAS_FILTERS = {
   POR_FUNCIONARIO: 'por_funcionario',
 } as const;
 
-// ✅ NUEVO: Configuraciones específicas para respuestas municipales
+// Configuraciones específicas para respuestas municipales
 export const RESPUESTAS_CONFIG = {
   PUNTUACION_MIN: 1,
   PUNTUACION_MAX: 5,

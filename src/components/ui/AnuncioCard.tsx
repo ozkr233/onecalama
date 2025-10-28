@@ -62,7 +62,7 @@ const getCloudinaryUrl = (src: string, width?: number, height?: number): string 
       u.pathname = u.pathname.replace('/image/upload/', `/image/upload/${t.join(',')}/`);
       return u.toString();
     } catch {
-      // si no parsea, continuamos tratándolo como public_id
+      // si no parsea, se continua tratándolo como public_id
     }
   }
 
@@ -77,7 +77,7 @@ const getCloudinaryUrl = (src: string, width?: number, height?: number): string 
 // ---------- Placeholder local ----------
 const getPlaceholderImage = (titulo: string) => {
   const t = (titulo || '').toLowerCase();
-  // usa el mismo icono para todos; cambia aquí si tienes otros assets
+  // usa el mismo icono para todos
   const icon = require('../../../assets/images/icon.png');
   if (t.includes('agua')) return icon;
   if (t.includes('obras') || t.includes('construccion')) return icon;
@@ -122,7 +122,6 @@ export default function AnuncioCard({ anuncio, isOffline = false }: AnuncioCardP
           <ImageContainer>
             <Image
               source={ph}
-              // usamos style → más fiable que width/height props
               style={{ width: '100%', height: 180 }}
               resizeMode="contain"
             />

@@ -1,10 +1,11 @@
 // src/components/respuestas/RespuestaMunicipalCard.tsx
 import React, { useState } from 'react';
-import { Alert, Pressable } from 'react-native';
+import { Alert } from 'react-native';
 import { Card, XStack, YStack, Text, H5, Button } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { RespuestaMunicipalFormateada } from '../../services/respuestasMunicipales';
 import { formatearFecha } from '../../utils/formatters';
+import { EmojiRating } from '../ui/EmojiRating';
 
 interface Props {
   respuesta: RespuestaMunicipalFormateada;
@@ -38,26 +39,13 @@ export const RespuestaMunicipalCard: React.FC<Props> = ({
     }
   };
 
-  const renderEstrellas = () => {
-    const estrellas = [];
-    for (let i = 1; i <= 5; i++) {
-      const estaLlena = respuesta.puntuacion && i <= respuesta.puntuacion;
-      estrellas.push(
-        <Pressable
-          key={i}
-          onPress={() => !respuesta.puntuacion && handleCalificar(i as 1 | 2 | 3 | 4 | 5)}
-          disabled={calificando || !!respuesta.puntuacion}
-        >
-          <Ionicons
-            name={estaLlena ? 'star' : 'star-outline'}
-            size={20}
-            color={estaLlena ? '#FFD700' : '#ccc'}
-          />
-        </Pressable>
-      );
+  const handleEmojiChange = (v: 1 | 2 | 3 | 4 | 5) => {
+    if (!respuesta.puntuacion) {
+      handleCalificar(v);
     }
-    return estrellas;
   };
+
+  
 
   const getColorSituacion = (situacion: string) => {
     const situacionLower = situacion.toLowerCase();
@@ -121,7 +109,7 @@ export const RespuestaMunicipalCard: React.FC<Props> = ({
           </YStack>
         </XStack>
 
-        {/* Información de la publicación si se debe mostrar */}
+        {/* Información de la publicación */}
         {mostrarPublicacion && (
           <YStack marginTop="$2" padding="$2" backgroundColor="$gray2" borderRadius="$2">
             <Text fontSize="$2" fontWeight="500" color="$color12">
@@ -205,16 +193,15 @@ export const RespuestaMunicipalCard: React.FC<Props> = ({
           </Text>
           
           <XStack space="$1" alignItems="center">
-            {renderEstrellas()}
-            {respuesta.puntuacion && (
-              <Text fontSize="$2" color="$color11" marginLeft="$2">
-                ({respuesta.puntuacion}/5)
-              </Text>
-            )}
+            <EmojiRating
+              value={respuesta.puntuacion ?? null}
+              onChange={handleEmojiChange}
+              disabled={calificando || !!respuesta.puntuacion}
+              size={22}
+              showLabel={!!respuesta.puntuacion}
+            />
             {calificando && (
-              <Text fontSize="$2" color="$color11" marginLeft="$2">
-                Calificando...
-              </Text>
+              <Text fontSize="$2" color="$color11">Enviando…</Text>
             )}
           </XStack>
           

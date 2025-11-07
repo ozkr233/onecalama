@@ -1,19 +1,54 @@
-// app/denuncia/[id].tsx - ACTUALIZADO CON RESPUESTAS MUNICIPALES
-import React, { useState, useEffect } from 'react';
-import { SafeAreaView, Alert, ScrollView, RefreshControl, Pressable } from 'react-native';
-import { Text, YStack, XStack, Card, H4, H5, Button, Tabs, TabsTab, TabsContent } from 'tamagui';
+// app/denuncia/[id].tsx - VERSIÓN CON DEBUG DE EVIDENCIAS
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { SafeAreaView, Alert } from 'react-native';
+import { Text, YStack, XStack, Card, H4, H5, Button, Tabs } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AppHeader from '../../src/components/layout/AppHeader';
-import SatisfactionSurvey from '../../src/components/ui/SatisfactionSurvey';
-import { RespuestaItem } from '../../src/components/historial/RespuestaItem';
 import { EvidenciaViewerModal } from '../../src/components/historial/EvidenciaViewerModal';
-import { RespuestaMunicipalCard } from '../../src/components/respuestas/RespuestaMunicipalCard';
-import { HistorialDenuncia, Respuesta, Evidencia } from '../../src/types/historial';
-import { formatearFecha, formatearFechaCompleta, getEstadoColor, getEstadoTexto } from '../../src/utils/formatters';
+import { HistorialDenuncia, Evidencia, Respuesta } from '../../src/types/historial';
 import LoadingSpinner from '../../src/components/ui/Loading';
+import { DenunciaDetailsTab } from '../../src/components/denuncia/DenunciaDetailsTab';
+import { DenunciaResponsesTab } from '../../src/components/denuncia/DenunciaResponsesTab';
 import { historialService } from '../../src/services/historial';
 import { useRespuestasMunicipales } from '../../src/hooks/useRespuestasMunicipales';
+import { RespuestaMunicipalFormateada } from '../../src/services/respuestasMunicipales';
+
+const EXTENSIONES_IMAGEN = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic']);
+const EXTENSIONES_VIDEO = new Set(['mp4', 'mov', 'avi', 'mkv', 'webm']);
+const EXTENSIONES_DOCUMENTO = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']);
+
+const obtenerTipoEvidenciaDesdeExtension = (extension?: string): Evidencia['tipo'] => {
+  const ext = (extension || '').toLowerCase();
+  if (EXTENSIONES_IMAGEN.has(ext)) return 'imagen';
+  if (EXTENSIONES_VIDEO.has(ext)) return 'video';
+  return 'documento';
+};
+
+const determinarTipoRespuestaDesdeSituacion = (situacionNueva?: string): Respuesta['tipo'] => {
+  if (!situacionNueva) return 'respuesta';
+  const situacion = situacionNueva.toLowerCase();
+  if (situacion.includes('resuel') || situacion.includes('cerr')) {
+    return 'resolucion';
+  }
+  if (situacion.includes('proceso') || situacion.includes('curso') || situacion.includes('actualiz')) {
+    return 'actualizacion';
+  }
+  return 'respuesta';
+};
+
+const obtenerNombreEvidencia = (url: string, index: number, extension?: string) => {
+  if (url) {
+    const partes = url.split('/');
+    const ultimo = partes[partes.length - 1];
+    if (ultimo) {
+      return ultimo;
+    }
+  }
+  const sufijo = extension ? '.' + extension : '';
+  return `evidencia_${index + 1}${sufijo}`;
+};
+
 
 export default function DenunciaDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -29,20 +64,36 @@ export default function DenunciaDetailScreen() {
   // Estados para evidencias
   const [evidenciaVisible, setEvidenciaVisible] = useState(false);
   const [evidenciaSeleccionada, setEvidenciaSeleccionada] = useState<Evidencia | null>(null);
+  const publicacionId = useMemo(() => {
+    if (!id) return null;
+    const parsedId = Number(id);
+    return Number.isNaN(parsedId) ? null : parsedId;
+  }, [id]);
 
-  // Hook para respuestas municipales
   const {
     respuestas: respuestasMunicipales,
-    loading: loadingRespuestas,
-    error: errorRespuestas,
-    hayRespuestas,
-    totalRespuestas,
+    loading: respuestasLoading,
+    error: respuestasError,
+    refreshing: respuestasRefreshing,
+    cargarRespuestas: cargarRespuestasMunicipales,
     refresh: refreshRespuestas,
-    calificarRespuesta,
-  } = useRespuestasMunicipales({ 
-    publicacionId: Number(id), 
-    autoLoad: true 
+    calificarRespuesta: calificarRespuestaMunicipal,
+  } = useRespuestasMunicipales({
+    publicacionId: publicacionId ?? undefined,
+    autoLoad: false,
   });
+
+  const [respuestasVista, setRespuestasVista] = useState<Respuesta[]>([]);
+
+  useEffect(() => {
+    setRespuestasVista([]);
+  }, [publicacionId]);
+
+  useEffect(() => {
+    if (tabActiva === 'respuestas' && publicacionId !== null) {
+      cargarRespuestasMunicipales();
+    }
+  }, [tabActiva, publicacionId, cargarRespuestasMunicipales]);
 
   useEffect(() => {
     if (id) {
@@ -66,11 +117,20 @@ export default function DenunciaDetailScreen() {
         setDenuncia(denunciaData);
         console.log('✅ [DETALLE] Denuncia cargada exitosamente');
         
-        // Marcar respuestas como leídas si existen
-        const respuestasNoLeidas = denunciaData.respuestas.filter(r => !r.leida);
-        if (respuestasNoLeidas.length > 0) {
-          await historialService.marcarRespuestaLeida(respuestasNoLeidas[0].id);
-        }
+        // 🔍 DEBUG: Evidencias
+        console.log('📎 [DEBUG] Evidencias encontradas:', denunciaData.evidencias?.length || 0);
+        denunciaData.evidencias?.forEach((evidencia, index) => {
+          console.log(`📷 [DEBUG] Evidencia ${index + 1}:`, {
+            id: evidencia.id,
+            nombre: evidencia.nombre,
+            tipo: evidencia.tipo,
+            url: evidencia.url,
+            size: evidencia.size,
+            fechaSubida: evidencia.fechaSubida
+          });
+        });
+        
+        // Eliminado: marcado de respuestas como leídas (backend no soporta)
       } else {
         setError('Denuncia no encontrada');
       }
@@ -84,14 +144,19 @@ export default function DenunciaDetailScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([
-      cargarDetalleDenuncia(),
-      refreshRespuestas()
-    ]);
+    await cargarDetalleDenuncia();
+    if (tabActiva === 'respuestas' && publicacionId !== null) {
+      await refreshRespuestas();
+    }
     setRefreshing(false);
   };
+  const handleRefreshRespuestas = useCallback(async () => {
+    if (publicacionId === null) return;
+    await refreshRespuestas();
+  }, [publicacionId, refreshRespuestas]);
 
-  // Función para manejar la calificación de la denuncia (existente)
+
+  // Función para manejar la calificación de la denuncia
   const handleSatisfactionRating = async (rating: number) => {
     if (!denuncia) return;
 
@@ -107,37 +172,117 @@ export default function DenunciaDetailScreen() {
     }
   };
 
-  // Función para manejar la calificación de respuestas municipales
-  const handleCalificarRespuestaMunicipal = async (respuestaId: number, puntuacion: 1 | 2 | 3 | 4 | 5) => {
-    try {
-      await calificarRespuesta(respuestaId, puntuacion);
-      Alert.alert('¡Gracias!', 'Tu calificación de la respuesta municipal ha sido registrada.');
-    } catch (error: any) {
-      console.error('Error calificando respuesta municipal:', error);
-      Alert.alert('Error', 'No se pudo enviar la calificación. Intenta nuevamente.');
-    }
-  };
-
-  // Manejar visualización de evidencias
+  // Manejar visualización de evidencias CON DEBUG
   const handleVerEvidencia = (evidencia: Evidencia) => {
-    setEvidenciaSeleccionada(evidencia);
+    console.log('👁️ [DEBUG] Abriendo evidencia:', {
+      id: evidencia.id,
+      nombre: evidencia.nombre,
+      tipo: evidencia.tipo,
+      url: evidencia.url,
+      urlCompleta: construirUrlCompleta(evidencia.url)
+    });
+    
+    // Crear una evidencia con URL completa para el modal
+    const evidenciaConUrlCompleta = {
+      ...evidencia,
+      url: construirUrlCompleta(evidencia.url)
+    };
+    
+    setEvidenciaSeleccionada(evidenciaConUrlCompleta);
     setEvidenciaVisible(true);
   };
 
-  // Manejar marcar respuesta como leída
-  const handleMarcarRespuestaLeida = async (respuestaId: string) => {
-    try {
-      setDenuncia(prev => {
-        if (!prev) return null;
-        const respuestasActualizadas = prev.respuestas.map(resp =>
-          resp.id === respuestaId ? { ...resp, leida: true } : resp
-        );
-        return { ...prev, respuestas: respuestasActualizadas };
+  // Función para construir URL completa de Cloudinary
+  const construirUrlCompleta = useCallback((entrada: string): string => {
+  if (!entrada) return '';
+  // extraer http(s) en cualquier parte y forzar https
+  const match = entrada.match(/https?:\/\/[^\s]+/);
+  if (match) {
+    return match[0].replace(/^http:\/\//, 'https://');
+  }
+  const path = entrada.replace(/^\/+/, '');
+  return `https://res.cloudinary.com/de06451wd/${path}`;
+}, []);
+
+  const transformarRespuestasMunicipales = useCallback((items: RespuestaMunicipalFormateada[]): Respuesta[] => {
+    return items.map((item) => {
+      const partesMensaje: string[] = [];
+      if (item.descripcion) partesMensaje.push(item.descripcion.trim());
+      if (item.acciones) partesMensaje.push(`Acciones realizadas: ${item.acciones}`.trim());
+      if (item.situacionAnterior || item.situacionNueva) {
+        partesMensaje.push(`Situacion: ${item.situacionAnterior || 'Sin informacion'} -> ${item.situacionNueva || 'Sin informacion'}`);
+      }
+
+      const mensaje = partesMensaje.filter(Boolean).join('\n\n') || 'Sin informacion disponible';
+
+      const evidencias = (item.evidencias || []).map((evidencia, evidenciaIndex) => {
+        const extension = (evidencia.tipo || '').toLowerCase();
+        return {
+          id: evidencia.id?.toString() ?? `${item.id}-${evidenciaIndex}`,
+          tipo: obtenerTipoEvidenciaDesdeExtension(extension),
+          url: construirUrlCompleta(evidencia.url),
+          nombre: obtenerNombreEvidencia(evidencia.url, evidenciaIndex, extension),
+          fechaSubida: evidencia.fecha,
+        } as Evidencia;
       });
-      await historialService.marcarRespuestaLeida(respuestaId);
-    } catch (error) {
-      console.error('Error marcando respuesta como leída:', error);
+
+      return {
+        id: item.id.toString(),
+        autor: item.funcionarioNombre || 'Municipalidad',
+        mensaje,
+        fechaRespuesta: item.fechaRespuesta,
+        tipo: determinarTipoRespuestaDesdeSituacion(item.situacionNueva),
+        esOficial: true,
+        leida: false,
+        evidencias,
+        puntuacion: item.puntuacion ?? null,
+      };
+    });
+  }, [construirUrlCompleta]);
+
+  useEffect(() => {
+    setRespuestasVista((prev) => {
+      const mapeadas = transformarRespuestasMunicipales(respuestasMunicipales);
+      return mapeadas.map((respuesta) => {
+        const anterior = prev.find((prevRespuesta) => prevRespuesta.id === respuesta.id);
+        return anterior ? { ...respuesta, leida: anterior.leida } : respuesta;
+      });
+    });
+  }, [respuestasMunicipales, transformarRespuestasMunicipales]);
+
+  const denunciaRender = useMemo(() => {
+    if (!denuncia) return null;
+    return { ...denuncia, respuestas: respuestasVista };
+  }, [denuncia, respuestasVista]);
+
+  // Eliminado: función para marcar respuesta como leída
+
+  // Función para debugging de evidencias
+  const debugEvidencias = () => {
+    if (!denuncia?.evidencias) {
+      Alert.alert('Debug', 'No hay evidencias para debuggear');
+      return;
     }
+
+    console.log('🔍 [DEBUG] === ANÁLISIS DE EVIDENCIAS ===');
+    denuncia.evidencias.forEach((evidencia, index) => {
+      const urlCompleta = construirUrlCompleta(evidencia.url);
+      console.log(`📷 Evidencia ${index + 1}:`, {
+        id: evidencia.id,
+        nombre: evidencia.nombre,
+        tipo: evidencia.tipo,
+        urlOriginal: evidencia.url,
+        urlCompleta: urlCompleta,
+        size: evidencia.size,
+        mimeType: evidencia.mimeType,
+        fechaSubida: evidencia.fechaSubida
+      });
+    });
+
+    Alert.alert(
+      'Debug Evidencias', 
+      `Se encontraron ${denuncia.evidencias.length} evidencias. Revisa la consola para detalles completos.`
+    );
   };
 
   // Pantalla de loading
@@ -151,7 +296,7 @@ export default function DenunciaDetailScreen() {
           showBackButton={true}
           onBackPress={() => router.back()}
         />
-        <YStack flex={1} justifyContent="center" alignItems="center" space="$4">
+        <YStack flex={1} justifyContent="center" alignItems="center" gap="$4">
           <LoadingSpinner size="large" />
           <Text fontSize="$4" color="$gray9">
             Cargando detalles de la denuncia...
@@ -172,7 +317,7 @@ export default function DenunciaDetailScreen() {
           showBackButton={true}
           onBackPress={() => router.back()}
         />
-        <YStack flex={1} justifyContent="center" alignItems="center" p="$4" space="$4">
+        <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" gap="$4">
           <Ionicons name="document-text" size={64} color="#ccc" />
           <Text fontSize="$5" fontWeight="bold" color="$textPrimary">
             {error || 'Denuncia no encontrada'}
@@ -189,215 +334,17 @@ export default function DenunciaDetailScreen() {
     );
   }
 
-  // Renderizado de contenido de detalles (existente)
-  const renderDetallesContent = () => (
-    <YStack space="$4">
-      {/* Información básica */}
-      <Card elevate bordered>
-        <YStack padding="$4" space="$3">
-          <XStack justifyContent="space-between" alignItems="flex-start">
-            <YStack flex={1}>
-              <Text fontSize="$2" color="$gray11" fontWeight="500" marginBottom="$1">
-                {denuncia.numeroFolio}
-              </Text>
-              <H4 color="$textPrimary" marginBottom="$2">
-                {denuncia.titulo}
-              </H4>
-              <Text fontSize="$3" color="$textSecondary" lineHeight="$5">
-                {denuncia.descripcion}
-              </Text>
-            </YStack>
-            <Text 
-              fontSize="$2" 
-              color="white"
-              backgroundColor={getEstadoColor(denuncia.estado).main}
-              paddingHorizontal="$3" 
-              paddingVertical="$2" 
-              borderRadius="$3"
-              fontWeight="600"
-            >
-              {getEstadoTexto(denuncia.estado)}
-            </Text>
-          </XStack>
-        </YStack>
-      </Card>
+  if (!denunciaRender) {
+    return null;
+  }
 
-      {/* Información adicional */}
-      <Card elevate bordered>
-        <YStack padding="$4" space="$3">
-          <H5 color="$textPrimary">Información Adicional</H5>
-          
-          <XStack space="$4" flexWrap="wrap">
-            <YStack space="$1">
-              <Text fontSize="$2" color="$gray11">Categoría</Text>
-              <Text fontSize="$3" color="$textPrimary" fontWeight="500">
-                {denuncia.categoria}
-              </Text>
-            </YStack>
-            
-            <YStack space="$1">
-              <Text fontSize="$2" color="$gray11">Fecha de Creación</Text>
-              <Text fontSize="$3" color="$textPrimary">
-                {formatearFechaCompleta(denuncia.fechaCreacion)}
-              </Text>
-            </YStack>
-            
-            {denuncia.departamentoAsignado && (
-              <YStack space="$1">
-                <Text fontSize="$2" color="$gray11">Departamento</Text>
-                <Text fontSize="$3" color="$textPrimary">
-                  {denuncia.departamentoAsignado}
-                </Text>
-              </YStack>
-            )}
-          </XStack>
-
-          {denuncia.ubicacion && (
-            <YStack space="$2">
-              <Text fontSize="$3" fontWeight="500" color="$textPrimary">
-                Ubicación
-              </Text>
-              <XStack alignItems="center" space="$2">
-                <Ionicons name="location" size={16} color="#666" />
-                <Text fontSize="$3" color="$textSecondary" flex={1}>
-                  {denuncia.ubicacion.direccion}
-                </Text>
-              </XStack>
-            </YStack>
-          )}
-        </YStack>
-      </Card>
-
-      {/* Evidencias */}
-      {denuncia.evidencias.length > 0 && (
-        <Card elevate bordered>
-          <YStack padding="$4" space="$3">
-            <H5 color="$textPrimary">Evidencias ({denuncia.evidencias.length})</H5>
-            <XStack space="$2" flexWrap="wrap">
-              {denuncia.evidencias.map((evidencia, index) => (
-                <Pressable
-                  key={evidencia.id}
-                  onPress={() => handleVerEvidencia(evidencia)}
-                >
-                  <YStack
-                    backgroundColor="$gray4"
-                    padding="$3"
-                    borderRadius="$3"
-                    alignItems="center"
-                    space="$2"
-                    width={100}
-                  >
-                    <Ionicons 
-                      name={evidencia.tipo === 'imagen' ? 'image' : 'document'} 
-                      size={32} 
-                      color="#666" 
-                    />
-                    <Text fontSize="$2" color="$textSecondary" textAlign="center">
-                      {evidencia.nombre || `Evidencia ${index + 1}`}
-                    </Text>
-                  </YStack>
-                </Pressable>
-              ))}
-            </XStack>
-          </YStack>
-        </Card>
-      )}
-
-      {/* Respuestas del sistema (historial interno) */}
-      {denuncia.respuestas.length > 0 && (
-        <Card elevate bordered>
-          <YStack padding="$4" space="$3">
-            <H5 color="$textPrimary">Seguimiento de la Denuncia</H5>
-            {denuncia.respuestas.map((respuesta) => (
-              <RespuestaItem
-                key={respuesta.id}
-                respuesta={respuesta}
-                onMarcarLeida={handleMarcarRespuestaLeida}
-                onVerEvidencia={handleVerEvidencia}
-              />
-            ))}
-          </YStack>
-        </Card>
-      )}
-
-      {/* Calificación de satisfacción */}
-      {denuncia.estado === 'resuelto' && (
-        <Card elevate bordered>
-          <YStack padding="$4">
-            <SatisfactionSurvey
-              currentRating={denuncia.satisfaccionCiudadano}
-              onRatingChange={handleSatisfactionRating}
-            />
-          </YStack>
-        </Card>
-      )}
-    </YStack>
-  );
-
-  // Renderizado de contenido de respuestas municipales
-  const renderRespuestasContent = () => (
-    <YStack space="$4">
-      {loadingRespuestas ? (
-        <YStack alignItems="center" space="$4" padding="$6">
-          <LoadingSpinner size="large" />
-          <Text fontSize="$4" color="$gray9">
-            Cargando respuestas municipales...
-          </Text>
-        </YStack>
-      ) : errorRespuestas ? (
-        <YStack alignItems="center" space="$4" padding="$6">
-          <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
-          <Text fontSize="$4" color="$red11" textAlign="center">
-            Error al cargar respuestas
-          </Text>
-          <Text fontSize="$3" color="$gray9" textAlign="center">
-            {errorRespuestas}
-          </Text>
-          <Button variant="outlined" onPress={refreshRespuestas}>
-            <Ionicons name="refresh" size={20} />
-            <Text>Reintentar</Text>
-          </Button>
-        </YStack>
-      ) : !hayRespuestas ? (
-        <YStack alignItems="center" space="$4" padding="$6">
-          <Ionicons name="chatbubbles-outline" size={64} color="#ccc" />
-          <Text fontSize="$4" color="$gray11" textAlign="center">
-            Sin respuestas municipales
-          </Text>
-          <Text fontSize="$3" color="$gray9" textAlign="center">
-            Aún no se han emitido respuestas oficiales para esta denuncia
-          </Text>
-        </YStack>
-      ) : (
-        <YStack space="$3">
-          <XStack justifyContent="space-between" alignItems="center">
-            <H5 color="$textPrimary">
-              Respuestas Municipales ({totalRespuestas})
-            </H5>
-            <Button size="$3" variant="outlined" onPress={refreshRespuestas}>
-              <Ionicons name="refresh" size={16} />
-            </Button>
-          </XStack>
-          
-          {respuestasMunicipales.map((respuesta) => (
-            <RespuestaMunicipalCard
-              key={respuesta.id}
-              respuesta={respuesta}
-              onCalificar={handleCalificarRespuestaMunicipal}
-              mostrarPublicacion={false} // No mostrar info de la publicación ya que estamos en su detalle
-              compacto={false}
-            />
-          ))}
-        </YStack>
-      )}
-    </YStack>
-  );
+  const denunciaActual = denunciaRender;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
       <AppHeader
         screenTitle="Detalle de Denuncia"
-        screenSubtitle={denuncia.numeroFolio}
+        screenSubtitle={denunciaActual.codigo}
         screenIcon="document-text"
         showBackButton={true}
         onBackPress={() => router.back()}
@@ -405,22 +352,31 @@ export default function DenunciaDetailScreen() {
 
       {/* Sistema de pestañas */}
       <Tabs
+        defaultValue="detalles"
         value={tabActiva}
         onValueChange={(value) => setTabActiva(value as 'detalles' | 'respuestas')}
         orientation="horizontal"
         flexDirection="column"
-        backgroundColor="$background"
+        flex={1}
       >
         {/* Header de pestañas */}
-        <XStack backgroundColor="white" borderBottomWidth={1} borderColor="$borderColor">
-          <TabsTab
+        <Tabs.List
+          backgroundColor="white"
+          borderBottomWidth={1}
+          borderColor="$borderColor"
+          paddingHorizontal="$0"
+          space="$0"
+        >
+          <Tabs.Trigger
             flex={1}
             value="detalles"
             paddingVertical="$3"
+            backgroundColor={tabActiva === 'detalles' ? '$blue2' : 'transparent'}
             borderBottomWidth={tabActiva === 'detalles' ? 2 : 0}
             borderBottomColor="$blue10"
+            unstyled
           >
-            <XStack alignItems="center" space="$2">
+            <XStack alignItems="center" gap="$2">
               <Ionicons 
                 name="document-text" 
                 size={18} 
@@ -433,16 +389,18 @@ export default function DenunciaDetailScreen() {
                 Detalles
               </Text>
             </XStack>
-          </TabsTab>
+          </Tabs.Trigger>
           
-          <TabsTab
+          <Tabs.Trigger
             flex={1}
             value="respuestas"
             paddingVertical="$3"
+            backgroundColor={tabActiva === 'respuestas' ? '$blue2' : 'transparent'}
             borderBottomWidth={tabActiva === 'respuestas' ? 2 : 0}
             borderBottomColor="$blue10"
+            unstyled
           >
-            <XStack alignItems="center" space="$2">
+            <XStack alignItems="center" gap="$2">
               <Ionicons 
                 name="chatbubbles" 
                 size={18} 
@@ -453,52 +411,40 @@ export default function DenunciaDetailScreen() {
                 fontWeight={tabActiva === 'respuestas' ? '600' : '400'}
               >
                 Respuestas
-                {hayRespuestas && (
+                {respuestasVista.length > 0 && (
                   <Text fontSize="$2" color="$blue10">
-                    {' '}({totalRespuestas})
+                    {' '}({respuestasVista.length})
                   </Text>
                 )}
               </Text>
             </XStack>
-          </TabsTab>
-        </XStack>
+          </Tabs.Trigger>
+        </Tabs.List>
 
         {/* Contenido de pestañas */}
-        <TabsContent value="detalles" flex={1}>
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                colors={['#E67E22']}
-                tintColor="#E67E22"
-              />
-            }
-          >
-            <YStack padding="$4">
-              {renderDetallesContent()}
-            </YStack>
-          </ScrollView>
-        </TabsContent>
+        <Tabs.Content value="detalles" flex={1}>
+          <DenunciaDetailsTab
+            denuncia={denunciaActual}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            onRate={handleSatisfactionRating}
+            onVerEvidencia={handleVerEvidencia}
+            onDebugEvidencias={debugEvidencias}
+            buildEvidenceUrl={construirUrlCompleta}
+          />
+        </Tabs.Content>
 
-        <TabsContent value="respuestas" flex={1}>
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                colors={['#E67E22']}
-                tintColor="#E67E22"
-              />
-            }
-          >
-            <YStack padding="$4">
-              {renderRespuestasContent()}
-            </YStack>
-          </ScrollView>
-        </TabsContent>
+        <Tabs.Content value="respuestas" flex={1}>
+          <DenunciaResponsesTab
+            respuestas={respuestasVista}
+            loading={respuestasLoading && respuestasVista.length === 0}
+            refreshing={respuestasRefreshing}
+            error={respuestasError}
+            onRefresh={handleRefreshRespuestas}
+            onVerEvidencia={handleVerEvidencia}
+            onCalificarMunicipal={(rid, p) => calificarRespuestaMunicipal(Number(rid), p)}
+          />
+        </Tabs.Content>
       </Tabs>
 
       {/* Modal de evidencias */}
@@ -510,3 +456,5 @@ export default function DenunciaDetailScreen() {
     </SafeAreaView>
   );
 }
+
+

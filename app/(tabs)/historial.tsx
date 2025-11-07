@@ -1,6 +1,7 @@
-// app/(tabs)/historial.tsx - ACTUALIZADO PARA USAR EL CARD ORIGINAL
-import React from 'react';
+// app/(tabs)/historial.tsx - ACTUALIZADO CON MANEJO DE EVIDENCIAS
+import React, { useState } from 'react';
 import { SafeAreaView, FlatList, RefreshControl } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, YStack, XStack, H4, H5, Button } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -8,11 +9,17 @@ import AppHeader from '../../src/components/layout/AppHeader';
 import { ResumenEstadistico } from '../../src/components/historial/ResumenEstadistico';
 import HistorialCard from '../../src/components/ui/HistorialCard';
 import LoadingSpinner from '../../src/components/ui/Loading';
+import { EvidenciaViewerModal } from '../../src/components/historial/EvidenciaViewerModal';
 import { useHistorial } from '../../src/hooks/useHistorial';
-import { HistorialDenuncia } from '../../src/types/historial';
+import { HistorialDenuncia, Evidencia } from '../../src/types/historial';
 
 export default function HistorialScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  // Estados para el modal de evidencias
+  const [evidenciaVisible, setEvidenciaVisible] = useState(false);
+  const [evidenciaSeleccionada, setEvidenciaSeleccionada] = useState<Evidencia | null>(null);
 
   // Hook principal
   const {
@@ -42,245 +49,176 @@ export default function HistorialScreen() {
       id: d?.id,
       codigo: d?.codigo,
       titulo: d?.titulo,
+      evidencias: d?.evidencias?.length || 0,
       isNull: d === null,
       isUndefined: d === undefined
     }))
   });
 
-  // ✅ NAVEGACIÓN CORREGIDA PARA EL CARD ORIGINAL
+  // Navegación a detalle de denuncia
   const handleCardPress = (denuncia: HistorialDenuncia) => {
     console.log('🔗 [SCREEN] Navegando a detalle:', denuncia.id);
     router.push(`/denuncia/${denuncia.id}`);
   };
 
-  // Componente de indicador de conexión
-  const ConnectionIndicator = () => (
-    <XStack 
-      justifyContent="space-between" 
-      alignItems="center" 
-      paddingHorizontal="$4"
-      paddingVertical="$2"
-      backgroundColor={isBackendConnected ? "$green2" : "$red2"}
-      borderRadius="$3"
-      marginHorizontal="$4"
-      marginBottom="$3"
-    >
-      <XStack alignItems="center" space="$2">
-        <Ionicons 
-          name={isBackendConnected ? "wifi" : "wifi-off"} 
-          size={16} 
-          color={isBackendConnected ? "#22c55e" : "#ef4444"} 
-        />
-        <Text fontSize="$2" color={isBackendConnected ? "$green11" : "$red11"}>
-          {isBackendConnected ? "Conectado" : "Sin conexión"}
-        </Text>
-      </XStack>
-      
-      {hayFiltrosActivos && (
-        <Button
-          size="$2"
-          chromeless
-          color="$blue10"
-          onPress={limpiarFiltros}
-        >
-          <Ionicons name="close-circle" size={16} />
-          <Text fontSize="$2">Limpiar</Text>
-        </Button>
-      )}
-    </XStack>
+  // Función para construir URL completa de Cloudinary
+  const construirUrlCompleta = (rutaRelativa: string): string => {
+    if (!rutaRelativa) return '';
+    if (rutaRelativa.startsWith('http')) return rutaRelativa;
+    return `https://res.cloudinary.com/de06451wd/${rutaRelativa}`;
+  };
+
+  // Manejar click en evidencia desde la tarjeta del historial
+  const handleEvidenciaPress = (evidencia: Evidencia) => {
+    console.log('[HISTORIAL] Abriendo evidencia desde historial:', {
+      id: evidencia.id,
+      nombre: evidencia.nombre,
+      tipo: evidencia.tipo,
+      url: evidencia.url
+    });
+    
+    // Crear una evidencia con URL completa
+    const evidenciaConUrlCompleta = {
+      ...evidencia,
+      url: construirUrlCompleta(evidencia.url)
+    };
+    
+    setEvidenciaSeleccionada(evidenciaConUrlCompleta);
+    setEvidenciaVisible(true);
+  };
+
+
+
+  // Validar datos antes de renderizar
+  const denunciasValidas = denuncias?.filter(d => d && d.id) || [];
+
+  // Renderizar cada item de denuncia
+  const renderDenuncia = ({ item, index }: { item: HistorialDenuncia; index: number }) => (
+    <HistorialCard
+      denuncia={item}
+      onPress={handleCardPress}
+      onEvidenciaPress={handleEvidenciaPress}
+      isFirst={index === 0}
+      isLast={index === denunciasValidas.length - 1}
+    />
   );
 
-  // Componente de loading inicial
+  // Componente de loading
   const LoadingState = () => (
-    <YStack flex={1} justifyContent="center" alignItems="center" space="$4">
+    <YStack flex={1} justifyContent="center" alignItems="center" gap="$4">
       <LoadingSpinner size="large" />
-      <Text fontSize="$4" color="$gray9">Cargando historial...</Text>
-      <Text fontSize="$2" color="$gray7">
-        {isBackendConnected ? "Obteniendo datos..." : "Verificando conexión..."}
+      <Text fontSize="$4" color="$gray9">
+        Cargando historial...
       </Text>
+    </YStack>
+  );
+
+  // Componente de error
+  const ErrorState = () => (
+    <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" gap="$4">
+      <Ionicons name="alert-circle" size={64} color="#ef4444" />
+      <Text fontSize="$5" fontWeight="heavy" color="$red11" textAlign="center">
+        Error al cargar historial
+      </Text>
+      <Text fontSize="$3" color="$gray9" textAlign="center">
+        {error || 'No se pudo cargar el historial de denuncias'}
+      </Text>
+      <Button onPress={recargarCompleto} variant="outlined" size="$4">
+        <Ionicons name="refresh" size={20} />
+        <Text>Reintentar</Text>
+      </Button>
     </YStack>
   );
 
   // Componente de estado vacío
   const EmptyState = () => (
-    <YStack 
-      flex={1} 
-      justifyContent="center" 
-      alignItems="center" 
-      space="$4"
-      paddingHorizontal="$6"
-    >
-      <Ionicons name="document-text-outline" size={64} color="#666" />
-      
-      <YStack alignItems="center" space="$2">
-        <H4 textAlign="center" color="$gray11">
-          {hayFiltrosActivos ? "Sin resultados" : "Sin denuncias"}
-        </H4>
-        <Text fontSize="$3" textAlign="center" color="$gray9">
-          {hayFiltrosActivos 
-            ? "No se encontraron denuncias con los filtros aplicados"
-            : "Aún no has realizado ninguna denuncia"
-          }
-        </Text>
-      </YStack>
-
-      {hayFiltrosActivos ? (
-        <Button
-          size="$4"
-          theme="blue"
-          onPress={limpiarFiltros}
-        >
-          <Ionicons name="refresh" size={20} />
-          <Text>Limpiar filtros</Text>
-        </Button>
-      ) : (
-        <Button
-          size="$4"
-          theme="orange"
-          onPress={() => router.push('/denuncias')}
-        >
-          <Ionicons name="add" size={20} />
-          <Text>Crear denuncia</Text>
-        </Button>
-      )}
+    <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" gap="$4">
+      <Ionicons name="document-text-outline" size={64} color="#ccc" />
+      <Text fontSize="$5" fontWeight="heavy" color="$gray11" textAlign="center">
+        No hay denuncias aún
+      </Text>
+      <Text fontSize="$3" color="$gray9" textAlign="center">
+        Cuando realices denuncias aparecerán aquí
+      </Text>
+      <Button onPress={() => router.push('/denuncias')} size="$4">
+        <Ionicons name="add" size={20} />
+        <Text>Crear primera denuncia</Text>
+      </Button>
     </YStack>
   );
 
-  // Componente de estado de error
-  const ErrorState = () => (
-    <YStack 
-      flex={1} 
-      justifyContent="center" 
-      alignItems="center" 
-      space="$4"
-      paddingHorizontal="$6"
-    >
-      <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
-      
-      <YStack alignItems="center" space="$2">
-        <H4 textAlign="center" color="$red11">
-          Error al cargar
-        </H4>
-        <Text fontSize="$3" textAlign="center" color="$gray9">
-          {error}
-        </Text>
-      </YStack>
-
-      <XStack space="$3">
-        <Button
-          size="$4"
-          variant="outlined"
-          onPress={recargarCompleto}
-        >
-          <Ionicons name="refresh" size={20} />
-          <Text>Reintentar</Text>
-        </Button>
-      </XStack>
-    </YStack>
-  );
-
-  // Componente de header de lista
+  // Header de la lista con estadísticas
   const ListHeader = () => (
-    <YStack space="$4" paddingBottom="$4">
-      {/* Resumen estadístico */}
-      {estadisticas && (
-        <YStack paddingHorizontal="$4">
-          <ResumenEstadistico 
-            estadisticas={estadisticas}
-            isLoading={loading}
-          />
-        </YStack>
+    <YStack gap="$4" paddingBottom="$4">
+      {/* Resumen estadístico si hay datos */}
+      {estadisticas && hayDatos && (
+        <ResumenEstadistico 
+          estadisticas={estadisticas}
+        />
+      )}
+
+      {/* Filtros activos */}
+      {hayFiltrosActivos && (
+        <XStack 
+          justifyContent="space-between" 
+          alignItems="center"
+          backgroundColor="$blue2"
+          paddingHorizontal="$4"
+          paddingVertical="$3"
+          borderRadius="$3"
+          marginHorizontal="$4"
+        >
+          <XStack alignItems="center" gap="$2">
+            <Ionicons name="filter" size={16} color="#0066cc" />
+            <Text fontSize="$3" color="$blue11" fontWeight="500">
+              Filtros aplicados
+            </Text>
+          </XStack>
+          <Button 
+            size="$2" 
+            variant="outlined" 
+            borderColor="$blue7"
+            onPress={limpiarFiltros}
+          >
+            <Text fontSize="$2" color="$blue11">Limpiar</Text>
+          </Button>
+        </XStack>
       )}
 
       {/* Header de denuncias */}
       <XStack 
         justifyContent="space-between" 
-        alignItems="center" 
+        alignItems="center"
         paddingHorizontal="$4"
-        paddingTop="$2"
       >
-        <YStack>
-          <H5 color="$gray12">
-            {hayFiltrosActivos ? "Resultados" : "Mis denuncias"}
-          </H5>
-          <Text fontSize="$2" color="$gray10">
-            {totalDenuncias} {totalDenuncias === 1 ? 'denuncia' : 'denuncias'}
-          </Text>
-        </YStack>
+        <H4 color="$textPrimary">
+          Mis Denuncias ({denunciasValidas.length})
+        </H4>
+        
+        {/* Notificaciones si hay respuestas no leídas */}
+        {notificacionesNoLeidas > 0 && (
+          <XStack alignItems="center" gap="$2">
+            <Ionicons name="notifications" size={16} color="#ef4444" />
+            <Text fontSize="$3" color="$red11" fontWeight="600">
+              {notificacionesNoLeidas} nueva{notificacionesNoLeidas !== 1 ? 's' : ''}
+            </Text>
+          </XStack>
+        )}
       </XStack>
     </YStack>
   );
 
-  // ✅ FUNCIÓN DE RENDERIZADO ADAPTADA PARA EL CARD ORIGINAL
-  const renderDenuncia = ({ item, index }: { item: HistorialDenuncia; index: number }) => {
-    // Debug del item específico
-    console.log(`🎯 [SCREEN] Renderizando item ${index}:`, {
-      id: item?.id,
-      codigo: item?.codigo,
-      titulo: item?.titulo,
-      isNull: item === null,
-      isUndefined: item === undefined
-    });
-
-    // ✅ VALIDACIÓN: Verificar que el item existe y tiene datos válidos
-    if (!item) {
-      console.warn(`⚠️ [SCREEN] Item ${index} es null/undefined`);
-      return null;
-    }
-
-    if (!item.id) {
-      console.warn(`⚠️ [SCREEN] Item ${index} no tiene ID válido:`, item);
-      return null;
-    }
-
-    // ✅ RENDERIZAR CON EL CARD ORIGINAL (props adaptadas)
-    return (
-      <HistorialCard
-        key={`denuncia-${item.id}-${index}`}
-        denuncia={item}                    // ✅ CORREGIDO: denuncia en lugar de item
-        onPress={handleCardPress}          // ✅ CORREGIDO: función que recibe la denuncia completa
-        isFirst={index === 0}              // ✅ AGREGADO: para estilo de primer elemento
-        isLast={index === denunciasValidas.length - 1} // ✅ AGREGADO: para estilo de último elemento
-      />
-    );
-  };
-
-  // ✅ FILTRAR DATOS VÁLIDOS ANTES DE RENDERIZAR
-  const denunciasValidas = React.useMemo(() => {
-    if (!Array.isArray(denuncias)) {
-      console.warn('⚠️ [SCREEN] denuncias no es un array:', typeof denuncias);
-      return [];
-    }
-
-    const validas = denuncias.filter((denuncia, index) => {
-      const esValida = denuncia && 
-                      typeof denuncia === 'object' && 
-                      denuncia.id && 
-                      denuncia.codigo;
-      
-      if (!esValida) {
-        console.warn(`⚠️ [SCREEN] Denuncia ${index} es inválida:`, denuncia);
-      }
-      
-      return esValida;
-    });
-
-    console.log(`✅ [SCREEN] Denuncias válidas: ${validas.length} de ${denuncias.length}`);
-    return validas;
-  }, [denuncias]);
-
-  // Render principal
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       <AppHeader
         screenTitle="Historial"
-        screenSubtitle={hayDatos ? `${totalDenuncias} denuncias` : "Mis denuncias"}
+        screenSubtitle={hayDatos ? 
+          `${totalDenuncias} denuncias` : "Mis denuncias"}
         screenIcon="time"
         showBackButton={false}
       />
 
       {/* Indicador de conexión */}
-      <ConnectionIndicator />
 
       {loading && !isRefreshing ? (
         <LoadingState />
@@ -297,7 +235,7 @@ export default function HistorialScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: 16,
-            paddingBottom: 20,
+            paddingBottom: 20 + insets.bottom,
           }}
           refreshControl={
             <RefreshControl
@@ -326,6 +264,13 @@ export default function HistorialScreen() {
           )}
         />
       )}
+
+      {/* Modal de evidencias */}
+      <EvidenciaViewerModal
+        visible={evidenciaVisible}
+        evidencia={evidenciaSeleccionada}
+        onClose={() => setEvidenciaVisible(false)}
+      />
     </SafeAreaView>
   );
 }

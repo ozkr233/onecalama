@@ -1,29 +1,39 @@
-// src/components/historial/RespuestaItem.tsx - MEJORADO CON EVIDENCIAS
+// src/components/historial/RespuestaItem.tsx - VERSIÓN COMPLETA Y CORREGIDA
 import React, { useState } from 'react';
 import { Card, XStack, YStack, Text, Button, Image, ScrollView } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity, Alert, Dimensions } from 'react-native';
 import { Respuesta, Evidencia } from '../../types/historial';
 import { formatearFecha, formatearTamanoArchivo } from '../../utils/formatters';
+import { EmojiRating } from '../ui/EmojiRating';
 
 interface RespuestaItemProps {
   respuesta: Respuesta;
-  onMarcarComoLeida?: (respuestaId: string) => void;
   onVerEvidencia?: (evidencia: Evidencia) => void;
+  onCalificarMunicipal?: (respuestaId: string, puntuacion: 1 | 2 | 3 | 4 | 5) => Promise<void> | void;
 }
 
 const { width } = Dimensions.get('window');
 
 export const RespuestaItem: React.FC<RespuestaItemProps> = ({
   respuesta,
-  onMarcarComoLeida,
-  onVerEvidencia
+  onVerEvidencia,
+  onCalificarMunicipal
 }) => {
   const [mostrarEvidencias, setMostrarEvidencias] = useState(false);
+  const [calificando, setCalificando] = useState(false);
 
-  const handleMarcarLeida = () => {
-    if (onMarcarComoLeida && !respuesta.leida) {
-      onMarcarComoLeida(respuesta.id);
+  const handleCalificar = async (puntuacion: 1 | 2 | 3 | 4 | 5) => {
+    if (!onCalificarMunicipal || respuesta.puntuacion) return;
+    try {
+      setCalificando(true);
+      await onCalificarMunicipal(respuesta.id, puntuacion);
+      Alert.alert('Gracias', 'Tu calificación ha sido registrada.');
+    } catch (e) {
+      console.error('Error calificando respuesta:', e);
+      Alert.alert('Error', 'No se pudo enviar la calificación.');
+    } finally {
+      setCalificando(false);
     }
   };
 
@@ -41,7 +51,6 @@ export const RespuestaItem: React.FC<RespuestaItemProps> = ({
   };
 
   const handleDescargarEvidencia = (evidencia: Evidencia) => {
-    // TODO: Implementar descarga real
     Alert.alert(
       'Descargar evidencia',
       `¿Deseas descargar "${evidencia.nombre}"?`,
@@ -63,9 +72,9 @@ export const RespuestaItem: React.FC<RespuestaItemProps> = ({
       elevate
       p="$4"
       mb="$3"
-      bg={respuesta.esRespuestaOficial ? '$blue1' : '$gray1'}
+      bg={respuesta.esOficial ? '$blue1' : '$gray1'}
       borderLeftWidth={4}
-      borderLeftColor={respuesta.esRespuestaOficial ? '$primary' : '$gray6'}
+      borderLeftColor={respuesta.esOficial ? '$primary' : '$gray6'}
       style={{
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -80,14 +89,14 @@ export const RespuestaItem: React.FC<RespuestaItemProps> = ({
           <YStack gap="$1" flex={1}>
             <XStack alignItems="center" gap="$2">
               <Ionicons
-                name={respuesta.esRespuestaOficial ? "shield-checkmark" : "person"}
+                name={respuesta.esOficial ? "shield-checkmark" : "person"}
                 size={16}
                 color="#E67E22"
               />
               <Text fontSize="$4" fontWeight="bold" color="$textPrimary">
-                {respuesta.autorRespuesta}
+                {respuesta.autor}
               </Text>
-              {respuesta.esRespuestaOficial && (
+              {respuesta.esOficial && (
                 <Card bg="$primary" px="$2" py="$1" br="$2">
                   <Text fontSize="$1" color="white" fontWeight="bold">
                     OFICIAL
@@ -96,8 +105,8 @@ export const RespuestaItem: React.FC<RespuestaItemProps> = ({
               )}
             </XStack>
             <Text fontSize="$2" color="$textSecondary">
-              {respuesta.cargoAutor}
-              {respuesta.departamento && ` • ${respuesta.departamento}`}
+              {respuesta.tipo === 'respuesta' ? 'Respuesta' : 
+               respuesta.tipo === 'actualizacion' ? 'Actualización' : 'Resolución'}
             </Text>
           </YStack>
 
@@ -105,19 +114,37 @@ export const RespuestaItem: React.FC<RespuestaItemProps> = ({
             <Text fontSize="$2" color="$textSecondary">
               {formatearFecha(respuesta.fechaRespuesta)}
             </Text>
-            {!respuesta.leida && (
-              <Card bg="$red10" w={8} h={8} br="$10" />
-            )}
           </YStack>
         </XStack>
 
         {/* Contenido de la respuesta */}
         <Text fontSize="$3" color="$textPrimary" lineHeight="$4">
-          {respuesta.contenido}
+          {respuesta.mensaje}
         </Text>
 
+        {/* Calificación de la respuesta */}
+        <YStack gap="$2">
+          <Text fontSize="$2" color="$textSecondary" fontWeight="bold">
+            {respuesta.puntuacion ? 'Tu calificación:' : 'Califica esta respuesta:'}
+          </Text>
+          <XStack alignItems="center" gap="$2">
+            <EmojiRating
+              value={respuesta.puntuacion ?? null}
+              onChange={handleCalificar}
+              disabled={calificando || !!respuesta.puntuacion}
+              size={20}
+              showLabel={!!respuesta.puntuacion}
+            />
+            {calificando && (
+              <Text fontSize="$2" color="$textSecondary">Enviando…</Text>
+            )}
+          </XStack>
+          {!respuesta.puntuacion && (
+            <Text fontSize="$1" color="$textSecondary">Toca un emoji para calificar</Text>
+          )}
+        </YStack>
         {/* Evidencias */}
-        {respuesta.evidencias.length > 0 && (
+        {respuesta.evidencias && respuesta.evidencias.length > 0 && (
           <YStack gap="$3">
             <XStack alignItems="center" justifyContent="space-between">
               <XStack alignItems="center" gap="$2">
@@ -141,67 +168,24 @@ export const RespuestaItem: React.FC<RespuestaItemProps> = ({
               </Button>
             </XStack>
 
+            {/* Lista de evidencias */}
             {mostrarEvidencias && (
               <YStack gap="$2">
-                {/* Vista de cuadrícula para imágenes */}
-                {respuesta.evidencias.filter(e => e.tipo === 'imagen').length > 0 && (
-                  <YStack gap="$2">
-                    <Text fontSize="$3" fontWeight="600" color="$textPrimary">
-                      📷 Imágenes
-                    </Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      <XStack gap="$2">
-                        {respuesta.evidencias
-                          .filter(e => e.tipo === 'imagen')
-                          .map((evidencia) => (
-                          <TouchableOpacity
-                            key={evidencia.id}
-                            onPress={() => onVerEvidencia?.(evidencia)}
-                          >
-                            <Card
-                              w={100}
-                              h={100}
-                              bg="$gray2"
-                              br="$3"
-                              overflow="hidden"
-                              borderWidth={1}
-                              borderColor="$gray6"
-                            >
-                              {evidencia.url ? (
-                                <Image
-                                  source={{ uri: evidencia.url }}
-                                  width="100%"
-                                  height="100%"
-                                  resizeMode="cover"
-                                />
-                              ) : (
-                                <YStack f={1} ai="center" jc="center">
-                                  <Ionicons name="image" size={24} color="#999" />
-                                </YStack>
-                              )}
-                            </Card>
-                          </TouchableOpacity>
-                        ))}
-                      </XStack>
-                    </ScrollView>
-                  </YStack>
-                )}
-
-                {/* Lista de documentos y videos */}
-                {respuesta.evidencias.filter(e => e.tipo !== 'imagen').map((evidencia) => (
+                {respuesta.evidencias.map((evidencia, index) => (
                   <TouchableOpacity
-                    key={evidencia.id}
-                    onPress={() => handleDescargarEvidencia(evidencia)}
+                    key={evidencia.id || index}
+                    onPress={() => onVerEvidencia && onVerEvidencia(evidencia)}
                   >
                     <Card
+                      bg="$gray2"
                       p="$3"
-                      bg="white"
+                      br="$3"
                       borderWidth={1}
-                      borderColor="$gray6"
-                      pressStyle={{ scale: 0.98 }}
+                      borderColor="$borderColor"
                     >
                       <XStack alignItems="center" gap="$3">
-                        <Card bg="$gray2" p="$2" br="$2">
+                        {/* Icono de tipo de archivo */}
+                        <Card bg="$blue2" p="$2" br="$2">
                           <Ionicons
                             name={getEvidenciaIcon(evidencia.tipo)}
                             size={20}
@@ -209,8 +193,9 @@ export const RespuestaItem: React.FC<RespuestaItemProps> = ({
                           />
                         </Card>
 
+                        {/* Información del archivo */}
                         <YStack flex={1} gap="$1">
-                          <Text fontSize="$3" fontWeight="600" color="$textPrimary">
+                          <Text fontSize="$3" fontWeight="bold" color="$textPrimary">
                             {evidencia.nombre}
                           </Text>
                           <XStack alignItems="center" gap="$2">
@@ -228,19 +213,20 @@ export const RespuestaItem: React.FC<RespuestaItemProps> = ({
                           </XStack>
                         </YStack>
 
+                        {/* Botones de acción */}
                         <XStack gap="$2">
                           <Button
                             size="$2"
-                            variant="outlined"
                             circular
-                            onPress={() => onVerEvidencia?.(evidencia)}
+                            bg="$blue5"
+                            onPress={() => onVerEvidencia && onVerEvidencia(evidencia)}
                           >
-                            <Ionicons name="eye" size={16} />
+                            <Ionicons name="eye" size={16} color="white" />
                           </Button>
                           <Button
                             size="$2"
-                            bg="$primary"
                             circular
+                            bg="$gray5"
                             onPress={() => handleDescargarEvidencia(evidencia)}
                           >
                             <Ionicons name="download" size={16} color="white" />
@@ -255,32 +241,11 @@ export const RespuestaItem: React.FC<RespuestaItemProps> = ({
           </YStack>
         )}
 
-        {/* Acciones */}
-        <XStack justifyContent="space-between" alignItems="center" mt="$2">
-          <XStack alignItems="center" gap="$2">
-            {respuesta.esRespuestaOficial && (
-              <Card bg="$green2" px="$2" py="$1" br="$2">
-                <Text fontSize="$1" color="$green11" fontWeight="bold">
-                  ✓ RESPUESTA OFICIAL
-                </Text>
-              </Card>
-            )}
-          </XStack>
-
-          {!respuesta.leida && (
-            <Button
-              size="$2"
-              bg="$primary"
-              onPress={handleMarcarLeida}
-            >
-              <Ionicons name="checkmark" size={14} color="white" />
-              <Text color="white" ml="$1" fontSize="$2">
-                Marcar como leída
-              </Text>
-            </Button>
-          )}
-        </XStack>
+        {/* Acción de leído eliminada por falta de soporte en backend */}
       </YStack>
     </Card>
   );
 };
+
+// Exportación por defecto también por compatibilidad
+export default RespuestaItem;

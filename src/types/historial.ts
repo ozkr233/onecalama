@@ -20,6 +20,7 @@ export interface Respuesta {
   esOficial: boolean;
   leida?: boolean; // Para marcar si el usuario ya leyó la respuesta
   evidencias?: Evidencia[];
+  puntuacion?: number | null; // 1-5 si el usuario calificó
 }
 
 export interface Ubicacion {

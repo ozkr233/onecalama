@@ -38,7 +38,7 @@ export const FiltrosModal: React.FC<FiltrosModalProps> = ({
     { value: 'otros', label: 'Otros' }
   ];
 
-  const toggleEstado = (estado: string) => {
+  const toggleEstado = (estado: any) => {
     const estadosActuales = filtrosLocal.estado || [];
     const nuevosEstados = estadosActuales.includes(estado)
       ? estadosActuales.filter(e => e !== estado)
@@ -87,7 +87,7 @@ export const FiltrosModal: React.FC<FiltrosModalProps> = ({
               {estados.map((estado) => (
                 <XStack key={estado.value} alignItems="center" gap="$2">
                   <Checkbox
-                    checked={filtrosLocal.estado?.includes(estado.value) || false}
+                    checked={(filtrosLocal.estado || []).includes(estado.value as any) || false}
                     onCheckedChange={() => toggleEstado(estado.value)}
                   />
                   <Text>{estado.label}</Text>

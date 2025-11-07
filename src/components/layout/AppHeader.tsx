@@ -5,7 +5,7 @@ import { StatusBar, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
-import { UserDisplay, UserAvatar } from '../ui/UserDisplay';
+import { UserAvatar } from '../ui/UserDisplay';
 
 interface AppHeaderProps {
   screenTitle: string;
@@ -16,7 +16,7 @@ interface AppHeaderProps {
   showAppInfo?: boolean;
   showBackButton?: boolean;
   onBackPress?: () => void;
-  showLogout?: boolean; // Nueva prop para mostrar botón de logout
+  showLogout?: boolean; // prop para botón de logout
 }
 
 export default function AppHeader({
@@ -32,6 +32,7 @@ export default function AppHeader({
 }: AppHeaderProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const firstName = user?.nombre ? user.nombre.trim().split(/\s+/)[0] : user?.nombre || '';
 
   const handleBackPress = () => {
     if (onBackPress) {
@@ -101,7 +102,7 @@ export default function AppHeader({
               </Button>
             )}
 
-            {/* Información de la app (solo en pantalla principal) */}
+            {/* Información de la app*/}
             {showAppInfo ? (
               <XStack ai="center" gap="$3">
                 {/* Logo de la app */}
@@ -140,14 +141,14 @@ export default function AppHeader({
                   >
                     OneCalama
                   </Text>
-                  {user && (
+                  {firstName ? (
                     <Text
                       color="rgba(255,255,255,0.9)"
                       fontSize="$4"
                     >
-                      Hola, <UserDisplay variant="first-name" color="rgba(255,255,255,0.9) "  />
+                      Hola, {firstName}
                     </Text>
-                  )}
+                  ) : null}
                 </YStack>
               </XStack>
             ) : (

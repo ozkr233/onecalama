@@ -1,6 +1,6 @@
 // src/components/forms/AIAssistantSection.tsx
 import React, { useRef } from 'react';
-import { Text, YStack, Button, Card, H4 } from 'tamagui';
+import { Text, YStack, Button, Card, H4, XStack } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { DenunciaFormData } from '../../types';
 import AIAssistant, { AIAssistantRef } from '../ai/AIAssistant';
@@ -27,41 +27,39 @@ const AIAssistantSection: React.FC<AIAssistantSectionProps> = ({
   };
 
   return (
-    <Card elevate p="$4" gap="$4">
+    <Card elevate p="$4" gap="$4" borderColor="$gray6" borderWidth={1} backgroundColor="$surface">
       <H4 color="$textPrimary">✨ Asistente Inteligente</H4>
 
       <Text fontSize="$4" color="$textSecondary" lineHeight="$1">
         Obtén sugerencias automáticas para completar tu denuncia de manera más efectiva y acelerar su procesamiento.
       </Text>
 
-      {/* Botón del Asistente IA */}
+      {/* Botón del Asistente IA - alto contraste */}
       <Button
         size="$4"
-        bg="linear-gradient(45deg, #667eea, #764ba2)"
+        bg="$primary"
         color="white"
-        fontWeight="bold"
+        fontWeight="700"
+        borderRadius="$4"
         onPress={handleAnalyze}
-        pressStyle={{ scale: 0.95 }}
-        style={{
-          shadowColor: '#667eea',
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.3,
-          shadowRadius: 6,
-          elevation: 5,
-        }}
+        hoverStyle={{ bg: '$primaryDark' }}
+        pressStyle={{ bg: '$primaryDark', scale: 0.98 }}
+        elevate
       >
-        <Ionicons name="sparkles" size={20} color="white" />
-        <Text color="white" ml="$2" fontWeight="bold" fontSize="$4">
-          Obtener Sugerencias IA
-        </Text>
+        <XStack alignItems="center" gap="$2">
+          <Ionicons name="sparkles" size={20} color="white" />
+          <Text color="white" fontWeight="700" fontSize="$4">
+            Obtener sugerencias IA
+          </Text>
+        </XStack>
       </Button>
 
       {/* Tips para el usuario */}
-      <YStack gap="$1" p="$2" bg="$blue2" borderRadius="$3">
-        <Text fontSize="$3" color="$blue11" fontWeight="600">
+      <YStack gap="$1" p="$3" bg="$gray2" borderRadius="$3" borderWidth={1} borderColor="$gray6">
+        <Text fontSize="$3" color="$textPrimary" fontWeight="600">
           💡 Palabras que el asistente reconoce:
         </Text>
-        <Text fontSize="$2" color="$blue10">
+        <Text fontSize="$2" color="$textSecondary">
           luz, bache, basura, ruido, parque, señal, tráfico, alumbrado
         </Text>
       </YStack>

@@ -24,7 +24,7 @@ export const ResumenEstadistico: React.FC<ResumenEstadisticoProps> = ({ estadist
         {/* Header */}
         <XStack alignItems="center" gap="$2">
           <Ionicons name="stats-chart" size={20} color="#E67E22" />
-          <H4 color="$textPrimary">📊 Resumen de mis denuncias</H4>
+          <H4 color="$textPrimary"> Resumen de mis denuncias</H4>
         </XStack>
 
         {/* Grid de estadísticas principales */}
@@ -82,11 +82,11 @@ export const ResumenEstadistico: React.FC<ResumenEstadisticoProps> = ({ estadist
               <XStack alignItems="center" gap="$2">
                 <Ionicons name="help-circle" size={24} color="#6B7280" />
                 <Text fontSize="$6" fontWeight="bold" color="#6B7280">
-                  {noResueltas}
+                  {estadisticas.enProceso}
                 </Text>
               </XStack>
               <Text fontSize="$3" color="#4B5563" fontWeight="600" textAlign="center">
-                No resuelto
+                en progreso
               </Text>
             </YStack>
           </Card>

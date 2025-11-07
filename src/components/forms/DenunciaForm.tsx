@@ -94,23 +94,36 @@ const DenunciaForm: React.FC<DenunciaFormProps> = ({
     onFormDataChange({ ...formData, [field]: value });
   };
 
-  const handleLocationSelect = (location: { latitude: number; longitude: number; address?: string }) => {
-    const locationData: LocationData = {
-      latitud: location.latitude,
-      longitud: location.longitude,
-      address: location.address
-    };
-    onFormDataChange({
-      ...formData,
-      ubicacion: locationData,
-      direccion: location.address || formData.direccion
-    });
-    setIsMapVisible(false);
+const handleLocationSelect = (location: {
+  latitud?: number;
+  longitud?: number;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
+}) => {
+  const lat = location.latitud ?? location.latitude;
+  const lng = location.longitud ?? location.longitude;
+
+  if (typeof lat !== 'number' || typeof lng !== 'number') {
+    // opcional: mostrar alerta/log si algo raro llega
+    console.warn('Ubicación inválida recibida:', location);
+    return;
+  }
+
+  const locationData: LocationData = {
+    latitud: lat,
+    longitud: lng,
+    address: location.address,
   };
 
-  const handleAISuggestion = (suggestions: Partial<DenunciaFormData>) => {
-    onFormDataChange({ ...formData, ...suggestions });
-  };
+  onFormDataChange({
+    ...formData,
+    ubicacion: locationData,
+    direccion: location.address || formData.direccion,
+  });
+
+  setIsMapVisible(false);
+};
 
   // Validaciones
   const shouldShowAI = formData.titulo.length > 3 || formData.descripcion.length > 3;
@@ -121,6 +134,10 @@ const DenunciaForm: React.FC<DenunciaFormProps> = ({
     formData.categoria &&
     formData.departamento
   );
+
+  function handleAISuggestion(suggestions: Partial<DenunciaFormData>): void {
+    throw new Error('Function not implemented.');
+  }
 
   return (
     <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
@@ -149,7 +166,7 @@ const DenunciaForm: React.FC<DenunciaFormProps> = ({
           <YStack gap="$3">
             {/* Categoría - Ahora primero */}
             <YStack gap="$2">
-              <Text fontSize="$4" fontWeight="bold" color="$textPrimary">
+              <Text fontSize="$4" color="$textPrimary">
                 Categoría del Problema *
               </Text>
               <Selector
@@ -169,7 +186,7 @@ const DenunciaForm: React.FC<DenunciaFormProps> = ({
 
             {/* Departamento -*/}
             <YStack gap="$2">
-              <Text fontSize="$4" fontWeight="bold" color="$textPrimary">
+              <Text fontSize="$4" color="$textPrimary">
                 Departamento Municipal
               </Text>
 
@@ -261,7 +278,7 @@ const DenunciaForm: React.FC<DenunciaFormProps> = ({
         <Card elevate p="$3" gap="$2">
           <XStack ai="center" gap="$2">
             <Ionicons name="information-circle" size={18} color="#667eea" />
-            <Text fontSize="$4" fontWeight="bold" color="#667eea">
+            <Text fontSize="$4" color="#667eea">
               Información importante
             </Text>
           </XStack>
@@ -283,11 +300,15 @@ const DenunciaForm: React.FC<DenunciaFormProps> = ({
           presentationStyle="fullScreen"
           onRequestClose={() => setIsMapVisible(false)}
         >
-          <MapSelector
-            onLocationSelect={handleLocationSelect}
-            onClose={() => setIsMapVisible(false)}
-            initialLocation={formData.ubicacion ? { latitude: formData.ubicacion.latitud, longitude: formData.ubicacion.longitud } : undefined}
-          />
+        <MapSelector
+          onLocationSelect={handleLocationSelect}
+          onClose={() => setIsMapVisible(false)}
+          initialLocation={
+            formData.ubicacion
+              ? { latitud: formData.ubicacion.latitud, longitud: formData.ubicacion.longitud }
+              : undefined
+          }
+        />
         </Modal>
       </YStack>
     </ScrollView>

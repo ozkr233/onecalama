@@ -1,13 +1,21 @@
 // app/(tabs)/_layout.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/hooks/useAuth';
+import { usePushNotifications } from '../../src/hooks/usePushNotifications';
 
 export default function TabLayout() {
   const { user, isAuthenticated } = useAuth();
+  const { ensureRegistered } = usePushNotifications();
+  const insets = useSafeAreaInsets();
 
-  // Si no está autenticado, no mostrar nada (el root layout debería redirigir)
+  useEffect(() => {
+    // Asegurar registro de notificaciones cuando entra a las pestañas
+    ensureRegistered().catch(() => {});
+  }, []);
+ 
   if (!isAuthenticated) {
     return null;
   }
@@ -17,14 +25,14 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: '#E67E22',
         tabBarInactiveTintColor: '#757575',
-        headerShown: false, // Mantenemos oculto porque usas AppHeader
+        headerShown: false, 
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopColor: '#E0E0E0',
           borderTopWidth: 1,
           paddingTop: 5,
-          paddingBottom: 5,
-          height: 60,
+          paddingBottom: Math.max(insets.bottom, 6),
+          height: 54 + Math.max(insets.bottom, 6),
         },
         tabBarLabelStyle: {
           fontSize: 12,

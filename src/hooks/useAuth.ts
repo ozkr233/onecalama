@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiService } from '../services/api';
+import { disableNotificationsOnServer } from '../services/notifications';
 
 interface User {
   id: number;
@@ -104,6 +105,8 @@ export const useAuth = () => {
       if (error.status === 401) {
         // Token inválido, limpiar todo
         await clearAuthData();
+        // Redirigir al login si la sesión expiró
+        try { router.replace('/auth/login'); } catch {}
       } else {
         // Otro error, mantener autenticado pero sin datos completos
         setAuthState(prev => ({ ...prev, isLoading: false }));
@@ -202,6 +205,7 @@ export const useAuth = () => {
 
   const logout = async () => {
     try {
+      try { await disableNotificationsOnServer(); } catch {}
       await apiService.logout();
     } catch (error) {
       console.warn('⚠️ Error en logout del servidor:', error);

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "465739039186",
+    "project_id": "onecalama",
+    "storage_bucket": "onecalama.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:465739039186:android:225885d1a39a224a36c80b",
+        "android_client_info": {
+          "package_name": "com.municipalidadcalama.onecalama"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAyf0zjYITf5fp9XxjHZo7MQJKuhEOkP98"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

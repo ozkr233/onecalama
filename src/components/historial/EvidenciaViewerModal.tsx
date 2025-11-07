@@ -1,11 +1,13 @@
 // src/components/historial/EvidenciaViewerModal.tsx
 import React, { useState } from 'react';
-import { Modal, Dimensions, Alert, Share } from 'react-native';
+import { Modal, Dimensions, Alert, Share, Platform } from 'react-native';
 import { Text, YStack, XStack, Button, Card, Image, ScrollView } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Evidencia } from '../../types/historial';
 import { formatearFecha } from '../../utils/formatters';
+import { downloadAsync, documentDirectory } from 'expo-file-system';
+import * as WebBrowser from 'expo-web-browser';
 
 interface EvidenciaViewerModalProps {
   visible: boolean;
@@ -24,22 +26,18 @@ export const EvidenciaViewerModal: React.FC<EvidenciaViewerModalProps> = ({
 
   if (!evidencia) return null;
 
-  const handleDescargar = () => {
-    // TODO: Implementar descarga real
-    Alert.alert(
-      'Descargar archivo',
-      `¿Deseas descargar "${evidencia.nombre}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Descargar',
-          onPress: () => {
-            console.log('Descargando evidencia:', evidencia.url);
-            Alert.alert('Éxito', 'La descarga comenzará en breve');
-          }
-        }
-      ]
-    );
+  const handleDescargar = async () => {
+    try {
+      const fileName = evidencia.nombre || `archivo_${Date.now()}`;
+      const sanitized = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const dest = `${documentDirectory}${sanitized}`;
+      console.log('Descargando evidencia a:', dest);
+      const download = await downloadAsync(evidencia.url, dest);
+      Alert.alert('Descarga completa', `Guardado en: ${download.uri}`);
+    } catch (e) {
+      console.error('Error descargando evidencia', e);
+      Alert.alert('Error', 'No se pudo descargar el archivo.');
+    }
   };
 
   const handleCompartir = async () => {
@@ -161,17 +159,18 @@ export const EvidenciaViewerModal: React.FC<EvidenciaViewerModalProps> = ({
                 </Text>
               </YStack>
 
-              {evidencia.tipo === 'video' && (
+              {(evidencia.tipo === 'video') && (
                 <Button
                   size="$4"
                   bg="$primary"
                   color="white"
                   fontWeight="bold"
-                  onPress={() => {
-                    Alert.alert(
-                      'Reproducir video',
-                      'Esta funcionalidad estará disponible próximamente'
-                    );
+                  onPress={async () => {
+                    try {
+                      await WebBrowser.openBrowserAsync(evidencia.url);
+                    } catch (e) {
+                      Alert.alert('Error', 'No se pudo abrir el video');
+                    }
                   }}
                 >
                   <Ionicons name="play" size={20} color="white" />
@@ -181,17 +180,18 @@ export const EvidenciaViewerModal: React.FC<EvidenciaViewerModalProps> = ({
                 </Button>
               )}
 
-              {evidencia.tipo === 'documento' && (
+              {(evidencia.tipo === 'documento') && (
                 <Button
                   size="$4"
                   bg="$secondary"
                   color="white"
                   fontWeight="bold"
-                  onPress={() => {
-                    Alert.alert(
-                      'Abrir documento',
-                      'Esta funcionalidad estará disponible próximamente'
-                    );
+                  onPress={async () => {
+                    try {
+                      await WebBrowser.openBrowserAsync(evidencia.url);
+                    } catch (e) {
+                      Alert.alert('Error', 'No se pudo abrir el documento');
+                    }
                   }}
                 >
                   <Ionicons name="open" size={20} color="white" />

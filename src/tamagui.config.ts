@@ -37,6 +37,10 @@ const customTokens = {
     textSecondary: '#757575',
     textDisabled: '#BDBDBD',
 
+    // Derivados usados por componentes 
+    primaryPress: '#D35400', // mismo que primaryDark
+    textDisabledPress: '#BDBDBD',
+
     // Colores de estado de denuncias
     statusReceived: '#FFF3E0', // Naranja claro
     statusInProgress: '#E3F2FD', // Azul claro
@@ -92,9 +96,15 @@ const fonts = {
 
 const appConfig = createTamagui({
   ...config,
+  // Use default animations from the preset (includes: quick, medium, slow, bouncy, etc.)
+  animations: (config as any).animations,
   tokens: {
     ...config.tokens,
-    ...customTokens,
+    // Merge color tokens to keep preset palette (blue2, green11, gray4, etc.)
+    color: {
+      ...(config as any).tokens?.color,
+      ...customTokens.color,
+    },
   },
   // ✅ Aplicar las fuentes del sistema
   fonts,
@@ -139,6 +149,10 @@ const appConfig = createTamagui({
       textPrimary: customTokens.color.textPrimary,
       textSecondary: customTokens.color.textSecondary,
       textDisabled: customTokens.color.textDisabled,
+
+      // Extras commonly referenced in components
+      primaryPress: customTokens.color.primaryDark,
+      textDisabledPress: customTokens.color.textDisabled,
     },
 
     // Tema light que hereda de calama para compatibilidad
@@ -174,6 +188,10 @@ const appConfig = createTamagui({
       textPrimary: customTokens.color.textPrimary,
       textSecondary: customTokens.color.textSecondary,
       textDisabled: customTokens.color.textDisabled,
+
+      // Extras commonly referenced in components
+      primaryPress: customTokens.color.primaryDark,
+      textDisabledPress: customTokens.color.textDisabled,
     },
   },
 })

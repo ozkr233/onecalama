@@ -3,9 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { Stack, SplashScreen, router } from 'expo-router';
 import { TamaguiProvider } from 'tamagui';
 import { Text, YStack, Spinner } from 'tamagui';
-import { SafeAreaView } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import config from '../src/tamagui.config';
+import { NotificationsProvider } from '../src/providers/NotificationsProvider';
 
 // Evitar que la splash screen se oculte automáticamente
 SplashScreen.preventAutoHideAsync();
@@ -61,6 +62,7 @@ export default function RootLayout() {
   // Mostrar spinner mientras se verifica auth
   if (isLoading) {
     return (
+      <SafeAreaProvider>
       <TamaguiProvider config={config} defaultTheme="calama">
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
           <YStack
@@ -76,11 +78,14 @@ export default function RootLayout() {
           </YStack>
         </SafeAreaView>
       </TamaguiProvider>
+      </SafeAreaProvider>
     );
   }
 
   return (
+    <SafeAreaProvider>
     <TamaguiProvider config={config} defaultTheme="calama">
+      <NotificationsProvider autoRegister={initialRoute === '/(tabs)'}>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -131,6 +136,8 @@ export default function RootLayout() {
           }} 
         />
       </Stack>
+      </NotificationsProvider>
     </TamaguiProvider>
+    </SafeAreaProvider>
   );
 }

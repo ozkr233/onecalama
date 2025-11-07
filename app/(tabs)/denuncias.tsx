@@ -21,7 +21,7 @@ export default function DenunciasScreen() {
   const [loading, setLoading] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
 
-  // Datos REALES desde tu Django API
+  // Datos desde tu Django API
   const [departamentos, setDepartamentos] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
   const [juntasVecinales, setJuntasVecinales] = useState<any[]>([]);
@@ -41,7 +41,7 @@ export default function DenunciasScreen() {
 
       console.log('🔄 Iniciando carga de datos desde Django...');
 
-      // Cargar todos los datos desde tu API real
+      // Cargar todos los datos desde API 
       const {
         categorias: categoriasData,
         departamentos: departamentosData,
@@ -55,7 +55,7 @@ export default function DenunciasScreen() {
         throw new Error('Token expirado o inválido. Verifica tu autenticación.');
       }
 
-      // Validar que tengamos datos mínimos
+      // Validar datos mínimos
       if (categoriasData.length === 0 || departamentosData.length === 0) {
         throw new Error('No se pudieron cargar las categorías o departamentos desde el servidor');
       }
@@ -213,7 +213,7 @@ export default function DenunciasScreen() {
         <AppHeader screenTitle="Nueva Denuncia" />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <Text style={{ fontSize: 18, color: '#3B82F6', marginBottom: 10 }}>
-            🔄 Conectando con el servidor...
+             Conectando con el servidor...
           </Text>
           <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
             Cargando categorías y departamentos desde tu servidor
@@ -239,7 +239,7 @@ export default function DenunciasScreen() {
         loading={loading}
         departamentos={departamentos}
         categorias={categorias}
-        juntasVecinales={juntasVecinales}
+        // juntasVecinales={juntasVecinales} 
       />
     </SafeAreaView>
   );

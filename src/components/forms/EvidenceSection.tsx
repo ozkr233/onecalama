@@ -4,7 +4,7 @@ import { Alert, Image, ScrollView } from 'react-native';
 import { Text, YStack, XStack, Button, Card, H4 } from 'tamagui';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as MediaLibrary from 'expo-media-library';
+// Usamos únicamente ImagePicker para permisos de galería/cámara
 
 interface Evidence {
   id: string;
@@ -30,7 +30,7 @@ const EvidenceSection: React.FC<EvidenceSectionProps> = ({
   // Solicitar permisos
   const requestPermissions = async () => {
     const cameraResult = await ImagePicker.requestCameraPermissionsAsync();
-    const mediaLibraryResult = await MediaLibrary.requestPermissionsAsync();
+    const mediaLibraryResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (cameraResult.status !== 'granted' || mediaLibraryResult.status !== 'granted') {
       Alert.alert(
@@ -61,6 +61,7 @@ const EvidenceSection: React.FC<EvidenceSectionProps> = ({
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
+        copyToCacheDirectory: true,
       });
 
       if (!result.canceled && result.assets[0]) {
@@ -103,6 +104,7 @@ const EvidenceSection: React.FC<EvidenceSectionProps> = ({
         quality: 0.8,
         allowsMultipleSelection: true,
         selectionLimit: maxImages - evidences.length,
+        copyToCacheDirectory: true,
       });
 
       if (!result.canceled && result.assets) {

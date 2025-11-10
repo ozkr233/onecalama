@@ -76,17 +76,17 @@ export const ResumenEstadistico: React.FC<ResumenEstadisticoProps> = ({ estadist
             </YStack>
           </Card>
 
-          {/* No resueltas */}
+          {/* en proceso */}
           <Card flex={1} bg="$gray4" p="$3" br="$3" borderWidth={1} borderColor="$gray7">
             <YStack alignItems="center" gap="$2">
               <XStack alignItems="center" gap="$2">
-                <Ionicons name="help-circle" size={24} color="#6B7280" />
-                <Text fontSize="$6" fontWeight="bold" color="#6B7280">
+                <Ionicons name="help-circle" size={24} color="#25b1caff" />
+                <Text fontSize="$6" fontWeight="bold" color="#25b1caff">
                   {estadisticas.enProceso}
                 </Text>
               </XStack>
-              <Text fontSize="$3" color="#4B5563" fontWeight="600" textAlign="center">
-                en progreso
+              <Text fontSize="$3" color="#0c214fff" fontWeight="600" textAlign="center">
+                En Proceso
               </Text>
             </YStack>
           </Card>

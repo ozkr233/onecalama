@@ -24,7 +24,7 @@ export default function HomeScreen() {
     error: estadisticasError,
     refresh: refreshEstadisticas
   } = useEstadisticas({ historialLimit: DEFAULT_HISTORIAL_PAGE_SIZE });
-  const [isConnected, setIsConnected] = React.useState(true); // Estado de conexion
+  const [isConnected, setIsConnected] = React.useState(true); // Estado de conexión
   const insets = useSafeAreaInsets();
 
   // Si no está autenticado, mostrar mensaje de carga
@@ -174,7 +174,7 @@ export default function HomeScreen() {
               <XStack ai="center" gap="$2" mb="$2">
                 <Ionicons name="alert-circle" size={16} color="#EF4444" />
                 <Text fontSize="$3" color="$red10" flexShrink={1}>
-                  No se pudieron cargar las estadisticas. {estadisticasError}
+                  No se pudieron cargar las estadísticas. {estadisticasError}
                 </Text>
                 <Button
                   size="$2"

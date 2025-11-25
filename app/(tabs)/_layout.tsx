@@ -12,7 +12,6 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    // Asegurar registro de notificaciones cuando entra a las pestañas
     ensureRegistered().catch(() => {});
   }, []);
  

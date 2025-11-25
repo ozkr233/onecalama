@@ -5,7 +5,7 @@ import {
   EstadisticasHistorial,
   FiltrosHistorial
 } from '../types/historial';
-import { historialService } from '../services/historial';
+import { historialService, DEFAULT_HISTORIAL_PAGE_SIZE } from '../services/historial';
 
 interface UseHistorialReturn {
   // Estado principal
@@ -33,7 +33,7 @@ interface UseHistorialReturn {
   cargarEstadisticas: () => Promise<void>;
   aplicarFiltros: (filtros: FiltrosHistorial) => void;
   limpiarFiltros: () => void;
-  // marcarRespuestaComoLeida eliminado (no soportado por backend)
+  // marcarRespuestaComoLeida eliminado
   calificarSatisfaccion: (denunciaId: string, calificacion: 1 | 2 | 3 | 4 | 5, comentario?: string) => Promise<void>;
   obtenerDenunciaPorId: (id: string) => Promise<HistorialDenuncia | null>;
   refresh: () => Promise<void>;
@@ -72,7 +72,11 @@ export function useHistorial(): UseHistorialReturn {
       }
 
       // Cargar datos
-      const historialData = await historialService.obtenerHistorial(filtros);
+      const historialData = await historialService.obtenerHistorial({
+        ...filtros,
+        limite: filtros.limite ?? DEFAULT_HISTORIAL_PAGE_SIZE,
+        pagina: filtros.pagina ?? 1
+      });
       setDenuncias(historialData);
       
       // Calcular notificaciones no leídas
@@ -99,7 +103,11 @@ export function useHistorial(): UseHistorialReturn {
     try {
       console.log('📊 [HOOK] Cargando estadísticas...');
       
-      const estadisticasData = await historialService.obtenerEstadisticas();
+      const estadisticasData = await historialService.obtenerEstadisticas({
+        ...filtros,
+        limite: filtros.limite ?? DEFAULT_HISTORIAL_PAGE_SIZE,
+        pagina: filtros.pagina ?? 1
+      });
       setEstadisticas(estadisticasData);
       
       console.log('✅ [HOOK] Estadísticas cargadas');

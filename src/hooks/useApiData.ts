@@ -8,8 +8,10 @@ import {
   SituacionPublicacion,
   Publicacion,
   DenunciaFormData,
-  Evidence
+  Evidence,
+  EstadisticasDenunciasResumen
 } from '../types/denuncias';
+import { historialService, DEFAULT_HISTORIAL_PAGE_SIZE } from '../services/historial';
 
 // Interface genérica para estados de carga
 interface ApiState<T> {
@@ -284,24 +286,75 @@ export const useCreatePublicacion = () => {
 };
 
 // Hook para estadísticas
-export const useEstadisticas = () => {
-  const [data, setData] = useState<any>(null);
+export const useEstadisticas = (options?: { historialLimit?: number; pagina?: number }) => {
+  const [data, setData] = useState<EstadisticasDenunciasResumen | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const historialLimit = options?.historialLimit;
+  const historialPagina = options?.pagina ?? 1;
 
   const fetchEstadisticas = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const estadisticas = await denunciasService.getEstadisticas();
+
+      const mapHistorialToResumen = (histStats: any): EstadisticasDenunciasResumen => ({
+        total: histStats.totalDenuncias,
+        activas: (histStats.pendientes ?? 0) + (histStats.enProceso ?? 0),
+        resueltas: histStats.resueltas,
+        enProceso: histStats.enProceso,
+        pendientes: histStats.pendientes,
+        rechazadas: histStats.rechazadas,
+        cerradas: histStats.cerradas,
+        ultimaActualizacion: new Date().toISOString()
+      });
+
+      // Si se pide usar un límite específico, calcular directo desde historial con ese tope
+      if (typeof historialLimit === 'number') {
+        const histStats = await historialService.obtenerEstadisticas({
+          limite: historialLimit,
+          pagina: historialPagina
+        });
+        setData(mapHistorialToResumen(histStats));
+        return;
+      }
+
+      let estadisticas = await denunciasService.getEstadisticas();
+
+      const isEmpty =
+        !estadisticas ||
+        [
+          estadisticas.total,
+          estadisticas.resueltas,
+          estadisticas.enProceso,
+          estadisticas.pendientes,
+          estadisticas.rechazadas,
+          estadisticas.cerradas
+        ].every((n) => (n ?? 0) === 0);
+
+      // Fallback: si el endpoint de resumen no entrega datos, calcular desde el historial limitado
+      if (isEmpty) {
+        try {
+          const histStats = await historialService.obtenerEstadisticas({
+            limite: DEFAULT_HISTORIAL_PAGE_SIZE,
+            pagina: 1
+          });
+          estadisticas = mapHistorialToResumen(histStats);
+        } catch (fallbackErr) {
+          console.warn('Fallback de estadísticas desde historial falló:', fallbackErr);
+        }
+      }
+
       setData(estadisticas);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar estadísticas');
+      const message = err instanceof Error ? err.message : 'Error al cargar estadisticas';
+      setError(message);
+      setData(null);
       console.error('Error en useEstadisticas:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [historialLimit, historialPagina]);
 
   useEffect(() => {
     fetchEstadisticas();

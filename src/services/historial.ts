@@ -3,6 +3,8 @@ import { HistorialDenuncia, FiltrosHistorial, EstadisticasHistorial } from '../t
 import { apiService } from './api';
 import AuthHelper from '../utils/authHelper';
 
+export const DEFAULT_HISTORIAL_PAGE_SIZE = 5;
+
 class HistorialService {
   /**
    * Obtener historial paginado (nuevo). Devuelve items + metadatos.
@@ -14,7 +16,7 @@ class HistorialService {
       console.log('🔎 [HISTORIAL] obtenerHistorialPaginado...');
       const usuarioId = await this.obtenerUsuarioId();
       const params = new URLSearchParams();
-      const pageSize = Number(filtros?.limite ?? 10);
+      const pageSize = Number(filtros?.limite ?? DEFAULT_HISTORIAL_PAGE_SIZE);
       const page = Number(filtros?.pagina ?? 1);
       params.append('usuario_id', usuarioId.toString());
       params.append('page_size', String(pageSize));
@@ -68,61 +70,91 @@ class HistorialService {
   async obtenerHistorial(filtros?: FiltrosHistorial): Promise<HistorialDenuncia[]> {
     try {
       console.log('🔄 [HISTORIAL] Iniciando obtención de historial...');
-      
+      const pageSize = Number(filtros?.limite ?? DEFAULT_HISTORIAL_PAGE_SIZE);
+      const page = Number(filtros?.pagina ?? 1);
       
       // 1. Obtener ID del usuario actual
       const usuarioId = await this.obtenerUsuarioId();
       console.log('👤 [HISTORIAL] Usuario ID obtenido:', usuarioId);
       
       // 2. Construir URL con parámetro usuario_id (y otros filtros si existen)
-      const params = new URLSearchParams();
-      params.append('page_size', '10'); // Paginación, ajustar según necesidad
-      params.append('page', '1');       // Página inicial
-      params.append('usuario_id', usuarioId.toString()); // ✅ CAMBIO: usuario_id en lugar de usuario
-      
-      // Agregar filtros adicionales si existen
-      if (filtros?.estado?.length) {
-        params.append('estado', filtros.estado.join(','));
+      const buildParams = (paginaSolicitada: number): URLSearchParams => {
+        const params = new URLSearchParams();
+        params.append('page_size', pageSize.toString()); // Paginación, ajustar según necesidad
+        params.append('page', paginaSolicitada.toString()); // Página inicial
+        params.append('usuario_id', usuarioId.toString()); // ✅ CAMBIO: usuario_id en lugar de usuario
+
+        // Agregar filtros adicionales si existen
+        if (filtros?.estado?.length) {
+          params.append('estado', filtros.estado.join(','));
+        }
+        if (filtros?.categoria?.length) {
+          params.append('categoria', filtros.categoria.join(','));
+        }
+        if (filtros?.fechaDesde) {
+          params.append('fecha_desde', filtros.fechaDesde);
+        }
+        if (filtros?.fechaHasta) {
+          params.append('fecha_hasta', filtros.fechaHasta);
+        }
+        if (filtros?.busqueda) {
+          params.append('busqueda', filtros.busqueda);
+        }
+        return params;
+      };
+
+      const fetchPage = async (paginaSolicitada: number) => {
+        const params = buildParams(paginaSolicitada);
+        const url = `/publicaciones/?${params.toString()}`;
+        const response = await apiService.get(url, true);
+        // Asignar tipo explícito para evitar errores de 'unknown'
+        const respObj = response as { results?: any[]; count?: number } | any[];
+
+        const publicaciones: any[] = Array.isArray(respObj)
+          ? respObj
+          : Array.isArray((respObj as any).results)
+            ? (respObj as any).results
+            : [];
+
+        const total = Array.isArray(respObj)
+          ? publicaciones.length
+          : Number((respObj as any).count ?? publicaciones.length);
+
+        console.log('?? [HISTORIAL] Respuesta recibida:', {
+          hasResults: Array.isArray(respObj) ? false : !!(respObj as any).results,
+          resultsLength: publicaciones.length,
+          isArray: Array.isArray(respObj),
+          arrayLength: Array.isArray(respObj) ? publicaciones.length : 0,
+          totalCount: total,
+          pageRequested: paginaSolicitada
+        });
+
+        return { publicaciones, total, url };
+      };
+
+      // 3. Hacer petición con el filtro de usuario (pueden venir 5 items por página desde backend)
+      const { publicaciones: primeraPagina, total } = await fetchPage(page);
+      const publicacionesAcumuladas = [...primeraPagina];
+
+      let paginaActual = page;
+      const backendPageSize = primeraPagina.length || pageSize;
+      const totalPaginas = backendPageSize > 0 ? Math.ceil(total / backendPageSize) : 1;
+
+      while (publicacionesAcumuladas.length < pageSize && paginaActual < totalPaginas) {
+        paginaActual += 1;
+        const { publicaciones: siguientesPagina } = await fetchPage(paginaActual);
+        if (!siguientesPagina.length) {
+          break;
+        }
+        publicacionesAcumuladas.push(...siguientesPagina);
       }
-      if (filtros?.categoria?.length) {
-        params.append('categoria', filtros.categoria.join(','));
-      }
-      if (filtros?.fechaDesde) {
-        params.append('fecha_desde', filtros.fechaDesde);
-      }
-      if (filtros?.fechaHasta) {
-        params.append('fecha_hasta', filtros.fechaHasta);
-      }
-      if (filtros?.busqueda) {
-        params.append('busqueda', filtros.busqueda);
-      }
-      
-      // 3. Hacer petición con el filtro de usuario
-      const url = `/publicaciones/?${params.toString()}`;
-      
-      const response = await apiService.get(url, true);
-      // Asignar tipo explícito para evitar errores de 'unknown'
-      const respObj = response as { results?: any[]; count?: number } | any[];
-      console.log('📡 [HISTORIAL] Respuesta recibida:', {
-        hasResults: Array.isArray(respObj) ? false : !!respObj.results,
-        resultsLength: Array.isArray(respObj) ? respObj.length : respObj.results?.length || 0,
-        isArray: Array.isArray(respObj),
-        arrayLength: Array.isArray(respObj) ? respObj.length : 0,
-        totalCount: Array.isArray(respObj) ? respObj.length : respObj.count
-      });
-      
-      // 4. Extraer publicaciones (usar .results como en tu código anterior)
-      const publicaciones: any[] = Array.isArray(respObj)
-        ? respObj
-        : Array.isArray(respObj.results)
-          ? respObj.results
-          : [];
-      console.log('📋 [HISTORIAL] Publicaciones del usuario obtenidas:', publicaciones.length);
+
+      console.log('?? [HISTORIAL] Publicaciones acumuladas:', publicacionesAcumuladas.length, 'de', total);
 
       // 5. Debug: Mostrar estructura de primera publicación
-      if (publicaciones.length > 0) {
-        const primeraPublicacion = publicaciones[0];
-        console.log('🔍 [HISTORIAL] Estructura de primera publicación:', {
+      if (publicacionesAcumuladas.length > 0) {
+        const primeraPublicacion = publicacionesAcumuladas[0];
+        console.log('?? [HISTORIAL] Estructura de primera publicación:', {
           id: primeraPublicacion.id,
           codigo: primeraPublicacion.codigo,
           titulo: primeraPublicacion.titulo?.substring(0, 30),
@@ -134,14 +166,15 @@ class HistorialService {
       }
       
       // 6. Transformar al formato de historial
-      const historial = publicaciones.map((pub: any) => this.transformarAHistorial(pub));
+      const historial = publicacionesAcumuladas.map((pub: any) => this.transformarAHistorial(pub));
       
       // 7. Ordenar por fecha (más recientes primero)
       historial.sort((a: { fechaCreacion: string | number | Date; }, b: { fechaCreacion: string | number | Date; }) => new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime());
       
-      console.log('🎉 [HISTORIAL] Historial procesado exitosamente:', historial.length);
-      console.log('✅ [HISTORIAL] URL final utilizada:', url);
-      return historial;
+      const historialFinal = historial.slice(0, pageSize);
+      console.log('?? [HISTORIAL] Historial procesado exitosamente:', historialFinal.length);
+      console.log('? [HISTORIAL] URL base utilizada:', `/publicaciones/?${buildParams(page).toString()}`, 'páginas solicitadas:', paginaActual - page + 1);
+      return historialFinal;
       
     } catch (error: any) {
       console.error('❌ [HISTORIAL] Error obteniendo historial:', error.message);
@@ -179,11 +212,11 @@ class HistorialService {
   /**
    * Obtener estadísticas del historial
    */
-  async obtenerEstadisticas(): Promise<EstadisticasHistorial> {
+  async obtenerEstadisticas(filtros?: FiltrosHistorial): Promise<EstadisticasHistorial> {
     try {
       console.log('📊 [HISTORIAL] Calculando estadísticas...');
       
-      const denuncias = await this.obtenerHistorial();
+      const denuncias = await this.obtenerHistorial(filtros);
       const estadisticas = this.calcularEstadisticas(denuncias);
       
       console.log('✅ [HISTORIAL] Estadísticas calculadas');

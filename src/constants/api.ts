@@ -8,13 +8,13 @@ export const API_CONFIG = {
     // else http://192.168.1.176:8000/api/v1 , http://192.168.8.103:8000/api/v1, https://clubdelamusica-pruebas.com/api/v1 //
   },
   staging: {
-    baseURL: 'https://staging-api.onecalama.cl/api/v1',  // 
-    timeout: 8000,
+    baseURL: 'https://clubdelamusica-pruebas.com/api/v1',  // 
+    timeout: 10000,
     retries: 3
   },
   production: {
-    baseURL: 'https://api.onecalama.cl/api/v1',  // 
-    timeout: 8000,
+    baseURL: 'https://clubdelamusica-pruebas.com/api/v1',  // 
+    timeout: 10000,
     retries: 2
   }
 };
@@ -27,7 +27,7 @@ export const CURRENT_ENV = process.env.NODE_ENV === 'production' ? 'production' 
 // Configuración activa
 export const ACTIVE_CONFIG = API_CONFIG[CURRENT_ENV];
 
-// Endpoints principales - CORREGIDOS SEGÚN TU BACKEND
+// Endpoints principales 
 export const ENDPOINTS = {
   // Autenticación - BASADO EN TUS URLS
   AUTH: {

@@ -49,10 +49,5 @@ config.transformer = {
   },
 };
 
-// Configuración de serializer para web
-config.serializer = {
-  ...config.serializer,
-  customSerializer: undefined,
-};
 
 module.exports = config;

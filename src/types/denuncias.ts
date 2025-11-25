@@ -11,6 +11,18 @@ export interface Evidence {
   uploadedAt?: string;
 }
 
+// Estad�sticas de denuncias (resumen para la pantalla principal)
+export interface EstadisticasDenunciasResumen {
+  total: number;
+  activas: number;
+  resueltas: number;
+  enProceso: number;
+  pendientes: number;
+  rechazadas: number;
+  cerradas: number;
+  ultimaActualizacion?: string | null;
+}
+
 // ACTUALIZADO: DenunciaFormData con evidencias locales
 export interface DenunciaFormData {
   [x: string]: any;

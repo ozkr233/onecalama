@@ -4,13 +4,15 @@ import {
   Publicacion,
   Categoria,
   DepartamentoMunicipal,
-  JuntaVecinal
+  JuntaVecinal,
+  EstadisticasDenunciasResumen
 } from '../types/denuncias';
 import { apiService } from './api';
 import { evidenciasService as evidenciasLegacy } from './evidencias';
 import { evidenciasDirectService } from './evidenciasDirect';
 import AuthHelper from '../utils/authHelper';
 import UserHelper from '../utils/userHelper';
+import { ENDPOINTS } from '../constants/api';
 
 // ---------------------------------------------
 // Tipos auxiliares
@@ -321,6 +323,84 @@ class DenunciasService {
       const parsed = this.handleApiError(error);
       console.error('❌ Error en creación de publicación:', parsed);
       throw parsed;
+    }
+  }
+
+  async getEstadisticas(): Promise<EstadisticasDenunciasResumen> {
+    try {
+      console.log('[DENUNCIAS] Obteniendo resumen de estadisticas...');
+
+      const response = await apiService.get<any>(
+        ENDPOINTS.ESTADISTICAS?.RESUMEN || '/resumen-estadisticas/',
+        true
+      );
+
+      const toNumber = (value: any, fallback = 0) => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+
+      const resueltas = toNumber(
+        response?.resueltas ??
+          response?.resueltos ??
+          response?.resueltos_total ??
+          response?.resueltos_mes
+      );
+      const enProceso = toNumber(
+        response?.en_proceso ??
+          response?.enProceso ??
+          response?.en_curso ??
+          response?.proceso
+      );
+      const pendientes = toNumber(
+        response?.pendientes ??
+          response?.pendiente ??
+          response?.recibidas ??
+          response?.recibidos
+      );
+      const rechazadas = toNumber(
+        response?.rechazadas ??
+          response?.no_resueltas ??
+          response?.rechazadas_total
+      );
+      const cerradas = toNumber(response?.cerradas ?? response?.cerrados ?? response?.finalizadas);
+      const totalFromApi = toNumber(
+        response?.total ??
+          response?.total_publicaciones ??
+          response?.total_denuncias ??
+          response?.totalDenuncias
+      );
+      const activasFromApi = toNumber(
+        response?.activas ??
+          response?.activos ??
+          response?.abiertas ??
+          (response?.pendientes ?? 0) + (response?.en_proceso ?? 0)
+      );
+
+      const total =
+        totalFromApi ||
+        resueltas +
+          enProceso +
+          pendientes +
+          rechazadas +
+          cerradas;
+
+      const activas = activasFromApi || Math.max(total - resueltas - cerradas - rechazadas, 0);
+
+      return {
+        total,
+        activas,
+        resueltas,
+        enProceso,
+        pendientes,
+        rechazadas,
+        cerradas,
+        ultimaActualizacion:
+          response?.ultima_actualizacion || response?.updated_at || response?.timestamp || null
+      };
+    } catch (error: any) {
+      console.error('[DENUNCIAS] Error obteniendo estadisticas:', error);
+      throw this.handleApiError(error);
     }
   }
 

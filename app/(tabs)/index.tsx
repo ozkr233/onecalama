@@ -1,6 +1,6 @@
 // app/(tabs)/index.tsx - PANTALLA PRINCIPAL ACTUALIZADA CON ANUNCIOS
 import React from 'react';
-import { Text, YStack, XStack, Button, Card, H4, H5 } from 'tamagui';
+import { Text, YStack, XStack, Button, Card, H4, H5, Spinner } from 'tamagui';
 import { SafeAreaView, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,12 +10,20 @@ import { WelcomeSection } from '../../src/components/ui/WelcomeSection';
 import AnuncioCard from '../../src/components/ui/AnuncioCard';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useAnuncios } from '../../src/hooks/useAnuncios';
+import { useEstadisticas } from '../../src/hooks/useApiData';
+import { DEFAULT_HISTORIAL_PAGE_SIZE } from '../../src/services/historial';
 import PushTest from '../../src/components/debug/PushTest';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
   const { anuncios, loading: anunciosLoading } = useAnuncios();
+  const {
+    data: estadisticas,
+    loading: estadisticasLoading,
+    error: estadisticasError,
+    refresh: refreshEstadisticas
+  } = useEstadisticas({ historialLimit: DEFAULT_HISTORIAL_PAGE_SIZE });
   const [isConnected, setIsConnected] = React.useState(true); // Estado de conexion
   const insets = useSafeAreaInsets();
 
@@ -32,6 +40,11 @@ export default function HomeScreen() {
     );
   }
   const anunciosRecientes = anuncios.slice(0, 1);
+  const statsActivas =
+    estadisticas?.activas ??
+    ((estadisticas?.pendientes ?? 0) + (estadisticas?.enProceso ?? 0));
+  const statsResueltas = estadisticas?.resueltas ?? 0;
+  const statsEnProceso = estadisticas?.enProceso ?? 0;
   
 
   return (
@@ -142,9 +155,6 @@ export default function HomeScreen() {
             </YStack>
           </Card>
 
-          {/* Debug: Prueba de notificaciones (eliminar en prod) */}
-          <PushTest />
-
           {/* Estadísticas Rápidas */}
           <Card
             bg="white"
@@ -160,54 +170,67 @@ export default function HomeScreen() {
               Resumen
             </H4>
 
+            {estadisticasError && (
+              <XStack ai="center" gap="$2" mb="$2">
+                <Ionicons name="alert-circle" size={16} color="#EF4444" />
+                <Text fontSize="$3" color="$red10" flexShrink={1}>
+                  No se pudieron cargar las estadisticas. {estadisticasError}
+                </Text>
+                <Button
+                  size="$2"
+                  variant="outlined"
+                  onPress={refreshEstadisticas}
+                  disabled={estadisticasLoading}
+                >
+                  <Text fontSize="$2" color="$primary">
+                    Reintentar
+                  </Text>
+                </Button>
+              </XStack>
+            )}
+
             <XStack gap="$3">
-              <YStack 
-                flex={1} 
-                alignItems="center" 
-                gap="$2"
-                p="$3"
-                backgroundColor="$statusReceived"
-                borderRadius="$3"
-              >
-                <Text fontSize="$6" fontWeight="bold" color="$primary">
-                  0
-                </Text>
-                <Text fontSize="$3" color="$textSecondary" textAlign="center">
-                  Denuncias Activas
-                </Text>
-              </YStack>
-
-              <YStack 
-                flex={1} 
-                alignItems="center" 
-                gap="$2"
-                p="$3"
-                backgroundColor="$statusResolved"
-                borderRadius="$3"
-              >
-                <Text fontSize="$6" fontWeight="bold" color="$success">
-                  0
-                </Text>
-                <Text fontSize="$3" color="$textSecondary" textAlign="center">
-                  Resueltas
-                </Text>
-              </YStack>
-
-              <YStack 
-                flex={1} 
-                alignItems="center" 
-                gap="$2"
-                p="$3"
-                backgroundColor="$statusInProgress"
-                borderRadius="$3"
-              >
-                <Text fontSize="$6" fontWeight="bold" color="$info">
-                  0
-                </Text>
-                <Text fontSize="$3" color="$textSecondary" textAlign="center">
-                  En Proceso
-                </Text>
-              </YStack>
+              {[
+                {
+                  label: 'Denuncias Activas',
+                  value: statsActivas,
+                  color: '$primary',
+                  bg: '$statusReceived'
+                },
+                {
+                  label: 'Resueltas',
+                  value: statsResueltas,
+                  color: '$success',
+                  bg: '$statusResolved'
+                },
+                {
+                  label: 'En Proceso',
+                  value: statsEnProceso,
+                  color: '$info',
+                  bg: '$statusInProgress'
+                }
+              ].map((item) => (
+                <YStack
+                  key={item.label}
+                  flex={1}
+                  alignItems="center"
+                  gap="$2"
+                  p="$3"
+                  backgroundColor={item.bg}
+                  borderRadius="$3"
+                >
+                  {estadisticasLoading ? (
+                    <Spinner size="small" color={item.color} />
+                  ) : (
+                    <Text fontSize="$6" fontWeight="bold" color={item.color}>
+                      {item.value ?? 0}
+                    </Text>
+                  )}
+                  <Text fontSize="$3" color="$textSecondary" textAlign="center">
+                    {item.label}
+                  </Text>
+                </YStack>
+              ))}
             </XStack>
           </Card>
           {/* Sección de Últimos Anuncios */}
